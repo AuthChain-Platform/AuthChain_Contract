@@ -17,10 +17,11 @@ contract AuthChain {
         bool verify;
         string nafdac_no;
         string registration_no;
+        uint256 yearOfRegistration;
         userRole role;
     }
 
-    struct Distributor {
+    struct LogisticsPersonnel {
         uint256 uid;
         string brandName;
         bool active;
@@ -43,7 +44,7 @@ contract AuthChain {
 
     //mapping to retrieve users
     mapping (address => Manufacturer) manufacturer;
-    mapping (address => Distributor) distributor;
+    mapping (address => LogisticsPersonnel) logisticsPersonnel;
     mapping (address => Retailer) retailer;
     mapping (address => Consumer) consumer;
     mapping(address => Admin) admin;
@@ -67,13 +68,15 @@ contract AuthChain {
     function registerManufacturer(
         string memory _brandName,
         string memory _nafdac_no,
-        string memory _registration_no
+        string memory _registration_no,
+        uint256 _yearOfRegistration
     ) external {
         Manufacturer memory manufacturerData = Manufacturer({
             brandName: _brandName,
             verify: false,
             nafdac_no: _nafdac_no,
             registration_no: _registration_no,
+            yearOfRegistration: _yearOfRegistration,
             role: userRole.Manufacturer
         });
 
@@ -85,14 +88,14 @@ contract AuthChain {
         string memory _brandName
     ) external {
         onlyManfacturer();
-        Distributor memory distributorData = Distributor({
+        LogisticsPersonnel memory logisticsPersonnelData = LogisticsPersonnel({
             uid: _uid,
             brandName: _brandName,
             active: true,
             role: userRole.Distributors
         });
 
-        distributor[msg.sender] = distributorData;
+        logisticsPersonnel[msg.sender] = logisticsPersonnelData;
     }
 
     function registerRetailer(
@@ -136,11 +139,11 @@ contract AuthChain {
         manufacturerDetails = manufacturer[msg.sender];
     }
 
-    function getRetailer() external view returns(Distributor memory distributorDetails) {
-        distributorDetails = distributor[msg.sender];
+    function getLogisticsPersonnel() external view returns(LogisticsPersonnel memory LogisticsPersonnelDetails) {
+        LogisticsPersonnelDetails = logisticsPersonnel[msg.sender];
     }
 
-    function getDistributor() external view returns(Retailer memory retailerDetails) {
+    function getRetailer() external view returns(Retailer memory retailerDetails) {
         retailerDetails = retailer[msg.sender];
     }
     
