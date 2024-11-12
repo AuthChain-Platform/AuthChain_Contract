@@ -4,9 +4,13 @@ pragma solidity ^0.8.27;
 import "./lib/error.sol";
 
 contract AuthChain {
+    address adminUser;
+    constructor() {
+        adminUser = msg.sender;
+    }
 
     // user roles to manage access controls
-    enum userRole { Consumers, Manufacturer, Distributors, Retailers, Admin }
+    enum userRole { Default, Consumers, Manufacturer, LogisticsPersonnel, Retailers, Admin }
 
     /**
      * using different structs to manage details 
@@ -52,14 +56,20 @@ contract AuthChain {
     // private functions for access control
 
     function onlyManfacturer() private view {
-        if(uint(manufacturer[msg.sender].role) != 1) {
+        if(uint(manufacturer[msg.sender].role) != 2) {
             revert Errors.NotAManufacturer();
         }
     }
 
     function onlyAdmin() private view {
-        if(uint(admin[msg.sender].role) != 4) {
+        if(uint(admin[msg.sender].role) != 5) {
             revert Errors.NotAnAdmin();
+        }
+    }
+
+    function onlyadminUser() private view {
+        if(msg.sender == adminUser) {
+            revert Errors.NotAnAdminUser();
         }
     }
 
@@ -77,7 +87,7 @@ contract AuthChain {
             nafdac_no: _nafdac_no,
             registration_no: _registration_no,
             yearOfRegistration: _yearOfRegistration,
-            role: userRole.Manufacturer
+            role: userRole.Default
         });
 
         manufacturer[msg.sender] = manufacturerData;
@@ -92,7 +102,7 @@ contract AuthChain {
             uid: _uid,
             brandName: _brandName,
             active: true,
-            role: userRole.Distributors
+            role: userRole.Default
         });
 
         logisticsPersonnel[msg.sender] = logisticsPersonnelData;
@@ -103,7 +113,7 @@ contract AuthChain {
     ) external {
         Retailer memory retailerData = Retailer({
             brandName: _brandName,
-            role: userRole.Retailers
+            role: userRole.Default
         });
 
         retailer[msg.sender] = retailerData;
@@ -111,7 +121,7 @@ contract AuthChain {
 
     function registerConsumer() external {
         Consumer memory consumerData = Consumer({
-            role: userRole.Consumers
+            role: userRole.Default
         });
 
         consumer[msg.sender] = consumerData;
@@ -119,7 +129,7 @@ contract AuthChain {
 
     function registerAdmin() external {
         Admin memory adminData = Admin({
-            role: userRole.Admin
+            role: userRole.Default
         });
 
         admin[msg.sender] = adminData;
@@ -132,6 +142,34 @@ contract AuthChain {
         manufacturer[manufacturerAddress].verify = true;
     }
 
+
+    function assignAdmin(address adminAddress) external {
+        onlyadminUser();
+        admin[adminAddress].role = userRole.Admin;
+    }
+
+
+    // handles assigning user roles
+    function assignUserRoles(address userAddress, userRole role) external {
+        onlyAdmin();
+        if(uint(role) == 2) {
+            manufacturer[userAddress].role = userRole.Manufacturer;
+        }
+
+        if(uint(role) == 3) {
+            manufacturer[userAddress].role = userRole.LogisticsPersonnel;
+        }
+
+        if(uint(role) == 1) {
+            manufacturer[userAddress].role = userRole.Consumers;
+        }
+
+        if(uint(role) == 4) {
+            manufacturer[userAddress].role = userRole.Retailers;
+        }
+
+        
+    }
 
     // getters functions
 
