@@ -4,7 +4,7 @@ pragma solidity ^0.8.27;
 import "./lib/error.sol";
 
 contract AuthChain {
-    address adminUser;
+    address public adminUser;
     constructor() {
         adminUser = msg.sender;
     }
@@ -26,6 +26,7 @@ contract AuthChain {
     }
 
     struct LogisticsPersonnel {
+        address logisticsAddress;
         uint256 uid;
         string brandName;
         bool active;
@@ -68,7 +69,7 @@ contract AuthChain {
     }
 
     function onlyadminUser() private view {
-        if(msg.sender == adminUser) {
+        if(msg.sender != adminUser) {
             revert Errors.NotAnAdminUser();
         }
     }
@@ -80,7 +81,7 @@ contract AuthChain {
         string memory _nafdac_no,
         string memory _registration_no,
         uint256 _yearOfRegistration
-    ) external {
+    ) external  {
         Manufacturer memory manufacturerData = Manufacturer({
             brandName: _brandName,
             verify: false,
@@ -93,19 +94,24 @@ contract AuthChain {
         manufacturer[msg.sender] = manufacturerData;
     }
 
-    function registerDistributor(
+    function registerLogisticsPersonnel(
+        address _logisticsAddress,
         uint256 _uid,
         string memory _brandName
     ) external {
         onlyManfacturer();
+        if(manufacturer[msg.sender].verify != true) {
+            revert Errors.ManufacturerNotVerified();
+        }
         LogisticsPersonnel memory logisticsPersonnelData = LogisticsPersonnel({
+            logisticsAddress: _logisticsAddress,
             uid: _uid,
             brandName: _brandName,
             active: true,
             role: userRole.Default
         });
 
-        logisticsPersonnel[msg.sender] = logisticsPersonnelData;
+        logisticsPersonnel[_logisticsAddress] = logisticsPersonnelData;
     }
 
     function registerRetailer(
@@ -127,26 +133,29 @@ contract AuthChain {
         consumer[msg.sender] = consumerData;
     }
 
-    function registerAdmin() external {
+    function registerAdmin(address adminAddress) external {
+        onlyadminUser();
         Admin memory adminData = Admin({
-            role: userRole.Default
+            role: userRole.Admin
         });
 
-        admin[msg.sender] = adminData;
+        admin[adminAddress] = adminData;
     }
 
     function verifyManufacturer(
         address manufacturerAddress
     ) external {
         onlyAdmin();
-        manufacturer[manufacturerAddress].verify = true;
+        Manufacturer storage m = manufacturer[manufacturerAddress];
+
+        m.verify = true;
     }
 
 
-    function assignAdmin(address adminAddress) external {
-        onlyadminUser();
-        admin[adminAddress].role = userRole.Admin;
-    }
+    // function assignAdmin(address adminAddress) external {
+    //     onlyadminUser();
+    //     admin[adminAddress].role = userRole.Admin;
+    // }
 
 
     // handles assigning user roles
@@ -173,12 +182,12 @@ contract AuthChain {
 
     // getters functions
 
-    function getManufacturer() external view returns(Manufacturer memory manufacturerDetails) {
-        manufacturerDetails = manufacturer[msg.sender];
+    function getManufacturer(address manufacturerAddress) external view returns(Manufacturer memory manufacturerDetails) {
+        manufacturerDetails = manufacturer[manufacturerAddress];
     }
 
-    function getLogisticsPersonnel() external view returns(LogisticsPersonnel memory LogisticsPersonnelDetails) {
-        LogisticsPersonnelDetails = logisticsPersonnel[msg.sender];
+    function getLogisticsPersonnel(address logisticsPersonnelAddress) external view returns(LogisticsPersonnel memory LogisticsPersonnelDetails) {
+        LogisticsPersonnelDetails = logisticsPersonnel[logisticsPersonnelAddress];
     }
 
     function getRetailer() external view returns(Retailer memory retailerDetails) {
@@ -190,7 +199,7 @@ contract AuthChain {
         consumerDetails = consumer[msg.sender];
     }
 
-    function getAdmin() external view returns(Admin memory adminDetails) {
-        adminDetails = admin[msg.sender];
+    function getAdmin(address adminAddress) external view returns(Admin memory adminDetails) {
+        adminDetails = admin[adminAddress];
     }
 }

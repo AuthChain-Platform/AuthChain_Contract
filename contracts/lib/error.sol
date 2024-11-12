@@ -5,4 +5,5 @@ library Errors {
     error NotAManufacturer();
     error NotAnAdmin();
     error NotAnAdminUser();
+    error ManufacturerNotVerified();
 }
