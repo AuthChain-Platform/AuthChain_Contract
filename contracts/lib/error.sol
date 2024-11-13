@@ -6,4 +6,5 @@ library Errors {
     error NotAnAdmin();
     error NotAnAdminUser();
     error ManufacturerNotVerified();
+    error NotARetailer();
 }
