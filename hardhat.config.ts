@@ -1,7 +1,13 @@
 import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 import * as dotenv from "dotenv";
+
 dotenv.config();
+
+// Add this check to ensure private key exists
+if (!process.env.ACCOUNT_PRIVATE_KEY) {
+  throw new Error("Please set your ACCOUNT_PRIVATE_KEY in a .env file");
+}
 
 const config: HardhatUserConfig = {
   solidity: "0.8.27",
@@ -9,12 +15,11 @@ const config: HardhatUserConfig = {
     // for testnet
     "lisk-sepolia": {
       url: "https://rpc.sepolia-api.lisk.com/",
-      accounts: [process.env.ACCOUNT_PRIVATE_KEY!],
+      accounts: [`0x${process.env.ACCOUNT_PRIVATE_KEY}`], // Add '0x' prefix if needed
+      // or alternatively: accounts: [process.env.ACCOUNT_PRIVATE_KEY],
     },
-    
   },
   etherscan: {
-    // Use "123" as a placeholder, because Blockscout doesn't need a real API key, and Hardhat will complain if this property isn't set.
     apiKey: {
       "lisk-sepolia": "123",
     },

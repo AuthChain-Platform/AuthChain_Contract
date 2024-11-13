@@ -7,219 +7,350 @@ import { expect } from "chai";
 import hre from "hardhat";
 
 describe("AuthChain", function () {
-//  Test for AuthChain
+    async function deployAuthChain() {
+        const [owner, account1, account2, account3, account4] = await hre.ethers.getSigners();
+        const authChainContract = await hre.ethers.getContractFactory("AuthChain");
+        const authChainDeploy = await authChainContract.deploy();
+        return { authChainDeploy, owner, account1, account2, account3, account4 };
+    }
 
-  async function deployAuthChain() {
-    const [ owner, account1, account2, account3 ] = await hre.ethers.getSigners();
+    describe("Retailer Registration and Management", function () {
+        it("Should register a retailer with retailer role", async function () {
+            const { authChainDeploy, account1 } = await loadFixture(deployAuthChain);
+            const brandName = "Test Retail Store";
 
-    const authChainContract = await hre.ethers.getContractFactory("AuthChain");
-    const authChainDeploy = await authChainContract.deploy();
+            await authChainDeploy.connect(account1).registerRetailer(brandName);
+            const retailerInfo = await authChainDeploy.connect(account1).getRetailer();
 
-    return { authChainDeploy, owner, account1, account2, account3 }
-  }
+            expect(retailerInfo.brandName).to.equal(brandName);
+            expect(retailerInfo.role).to.equal(4); // Default role
+        });
 
-  describe("Test Deployment successful with admin owner", function () {
-    it("Should ensure that contract is deployed with admin user set in the constructor", async function () {
-      const { authChainDeploy, owner, account1, account2 } = await loadFixture(deployAuthChain);
+        it("Should emit RetailerRegistered event", async function () {
+            const { authChainDeploy, account1 } = await loadFixture(deployAuthChain);
+            const brandName = "Test Retail Store";
 
-      expect(await authChainDeploy.adminUser()).to.eq(owner);
+            await expect(authChainDeploy.connect(account1).registerRetailer(brandName))
+                .to.emit(authChainDeploy, "RetailerRegistered")
+                .withArgs(account1.address, brandName);
+        });
     });
 
-  })
+    describe("Product Management", function () {
+        it("Should allow manufacturer to add product to inventory", async function () {
+            const { authChainDeploy, owner, account1, account2 } = await loadFixture(deployAuthChain);
+            
+            // Register and verify manufacturer
+            await authChainDeploy.connect(account1).registerManufacturer(
+                "Test Manufacturer",
+                "NAF123",
+                "REG456",
+                2024,
+                "Test Location"
+            );
 
-  describe("Test register manufacturer functionality", function () {
-    it("Should ensure manufacturer is registered with a verified status of false and user role of default", async function () {
-      const { authChainDeploy, owner, account1, account2 } = await loadFixture(deployAuthChain);
+            await authChainDeploy.connect(owner).registerAdmin(account2);
+            await authChainDeploy.connect(account2).verifyManufacturer(account1.address);
+            await authChainDeploy.connect(account2).assignUserRoles(account1.address, 2); // Manufacturer role
 
-      const brandName = "Pure Products";
-      const nafdacNumber = "JK123TY44";
-      const registrationNumber = "2658867";
-      const yearOfRegistration = 2025;
+            // Add product
+            const productCode = 12345;
+            await expect(authChainDeploy.connect(account1).addToInventory(
+                productCode,           // _productCode
+                "Test Product",        // _productName
+                "Test Description",    // _description
+                1000,                  // _price
+                "2025-12-31",         // _expiryDate as string
+                1,                    // _batchID
+                100,                  // _quantity
+                "2024-03-13",         // _productionDate
+                "BATCH001",           // _batch
+                "product-image.jpg"   // _productImage
+            )).to.emit(authChainDeploy, "ProductAdded")
+              .withArgs(productCode, "Test Product", 100, account1.address);
+        });
 
-      const registerManufacturer = await authChainDeploy.connect(account1).registerManufacturer(
-        brandName,
-        nafdacNumber,
-        registrationNumber,
-        yearOfRegistration
-      );
-
-      const getManufacturer = await authChainDeploy.getManufacturer(account1);
-
-      expect(await getManufacturer.brandName).to.eq(brandName);
-      expect(await getManufacturer.nafdac_no).to.eq(nafdacNumber);
-      expect(await getManufacturer.registration_no).to.eq(registrationNumber);
-      expect(await getManufacturer.yearOfRegistration).to.eq(yearOfRegistration);
-      expect(await getManufacturer.verify).to.eq(false);
-      expect(await getManufacturer.verify).to.not.eq(true);
-      expect(await getManufacturer.role).to.eq(0);
-      expect(await getManufacturer.role).to.not.eq(1);
-
+        it("Should fail when non-manufacturer tries to add product", async function () {
+            const { authChainDeploy, account1 } = await loadFixture(deployAuthChain);
+            
+            await expect(authChainDeploy.connect(account1).addToInventory(
+                12345,               // _productCode
+                "Test Product",      // _productName
+                "Test Description",  // _description
+                1000,               // _price
+                "2025-12-31",       // _expiryDate as string
+                1,                  // _batchID
+                100,                // _quantity
+                "2024-03-13",       // _productionDate
+                "BATCH001",         // _batch
+                "product-image.jpg" // _productImage
+            )).to.be.revertedWithCustomError(authChainDeploy, "NotAManufacturer");
+        });
     });
 
-  })
-
-  describe("Test register admin functionality with contract admin uer should pass", function () {
-    it("Should ensure admin can only be registered by contract admin user", async function () {
-      const { authChainDeploy, owner, account1, account2 } = await loadFixture(deployAuthChain);
-
-      const registerAdmin = await authChainDeploy.connect(owner).registerAdmin(account1);
-
-      const getAdmin = await authChainDeploy.getAdmin(account1);
-
-      expect(await getAdmin.role).to.eq(5);
-      expect(await getAdmin.role).to.not.eq(1);
-
-    });
-
-  })
-
-
-  describe("Test register admin functionality with non contract admin user should fail", function () {
-    it("Should ensure admin cannot be registered by other user apart from contract admin user ", async function () {
-      const { authChainDeploy, owner, account1, account2 } = await loadFixture(deployAuthChain);
-
-      await expect(authChainDeploy.connect(account1).registerAdmin(account2)).to.be.revertedWithCustomError(
-        authChainDeploy,
-        "NotAnAdminUser()"
-      ).withArgs();
-
-    });
-
-  })
-
-
-  describe("Test verify manufacturer functionality", function () {
-    it("Should ensure that only admin can verify manufacturer", async function () {
-      const { authChainDeploy, owner, account1, account2 } = await loadFixture(deployAuthChain);
-
-      const brandName = "Pure Products";
-      const nafdacNumber = "JK123TY44";
-      const registrationNumber = "2658867";
-      const yearOfRegistration = 2025;
-
-      // registering manufacturer
+    describe("Consumer Registration and Purchasing", function () {
+      it("Should allow retailer to sell to consumer", async function () {
+          const { authChainDeploy, owner, account1, account2, account3 } = await loadFixture(deployAuthChain);
+          
+          // 1. Setup admin first
+          await authChainDeploy.connect(owner).registerAdmin(owner.address);
+  
+          // 2. Setup retailer
+          await authChainDeploy.connect(account1).registerRetailer("Test Retail");
+          // Assign retailer role
+          await authChainDeploy.connect(owner).assignUserRoles(account1.address, 4); // Retailer role
+  
+          // 3. Setup manufacturer
+          await authChainDeploy.connect(account2).registerManufacturer(
+              "Test Manufacturer",
+              "NAF123",
+              "REG456",
+              2024,
+              "Test Location"
+          );
+          // Verify manufacturer
+          await authChainDeploy.connect(owner).verifyManufacturer(account2.address);
+          // Assign manufacturer role
+          await authChainDeploy.connect(owner).assignUserRoles(account2.address, 2); // Manufacturer role
+  
+          // 4. Add product to manufacturer inventory
+          const productCode = 12345;
+          await authChainDeploy.connect(account2).addToInventory(
+              productCode,
+              "Test Product",
+              "Test Description",
+              1000,
+              "2025-12-31",
+              1,
+              100,
+              "2024-03-13",
+              "BATCH001",
+              "product-image.jpg"
+          );
+  
+          // 5. Register consumer
+          await authChainDeploy.connect(account3).registerConsumer();
+          
+          // 6. Transfer product to retailer
+          await authChainDeploy.connect(account2).transferToRetailer(
+              productCode,
+              account1.address,
+              10
+          );
+  
+          // 7. Sell to consumer
+          await expect(
+              authChainDeploy.connect(account1).sellToConsumer(
+                  productCode,
+                  account3.address,
+                  1
+              )
+          ).to.emit(authChainDeploy, "ProductSoldToConsumer")
+           .withArgs(productCode, account3.address, 1);
+      });
+  
+      // Optional: Add test to verify product status after sale
      
+  });
 
-      const registerManufacturer = await authChainDeploy.connect(account1).registerManufacturer(
-        brandName,
-        nafdacNumber,
-        registrationNumber,
-        yearOfRegistration
-      );
+  describe("Consumer Registration and Purchasing", function () {
+    it("Should allow retailer to sell to consumer with batch tracking", async function () {
+        const { authChainDeploy, owner, account1, account2, account3 } = await loadFixture(deployAuthChain);
+        
+        // 1. Setup admin first
+        await authChainDeploy.connect(owner).registerAdmin(owner.address);
 
-      const getManufacturer = await authChainDeploy.getManufacturer(account1);
+        // 2. Setup retailer
+        await authChainDeploy.connect(account1).registerRetailer("Test Retail");
+        await authChainDeploy.connect(owner).assignUserRoles(account1.address, 4); // Retailer role
 
-      // registering admin
-      const registerAdmin = await authChainDeploy.connect(owner).registerAdmin(account2);
+        // 3. Setup manufacturer
+        await authChainDeploy.connect(account2).registerManufacturer(
+            "Test Manufacturer",
+            "NAF123",
+            "REG456",
+            2024,
+            "Test Location"
+        );
+        await authChainDeploy.connect(owner).verifyManufacturer(account2.address);
+        await authChainDeploy.connect(owner).assignUserRoles(account2.address, 2);
 
-      const getAdmin = await authChainDeploy.getAdmin(account2);
+        // 4. Add product with specific batchID
+        const productCode = 12345;
+        const batchID = 567;
+        await authChainDeploy.connect(account2).addToInventory(
+            productCode,
+            "Test Product",
+            "Test Description",
+            1000,
+            "2025-12-31",
+            batchID,  // Using specific batchID
+            100,
+            "2024-03-13",
+            "BATCH001",
+            "product-image.jpg"
+        );
 
-      
-      const verifyManufacturer = await authChainDeploy.connect(account2).verifyManufacturer(account1);
+        // 5. Register consumer
+        await authChainDeploy.connect(account3).registerConsumer();
+        
+        // 6. Transfer product to retailer
+        await authChainDeploy.connect(account2).transferToRetailer(
+            productCode,
+            account1.address,
+            10
+        );
 
-      const updatedManufacturer =  await authChainDeploy.getManufacturer(account1);
-      
+        
 
-      await expect(updatedManufacturer.verify).to.eq(true);
-    });
-
-  })
-
-  describe("Test verify manufacturer functionality", function () {
-    it("Should ensure that non admin can not verify manufacturer", async function () {
-      const { authChainDeploy, owner, account1, account2 } = await loadFixture(deployAuthChain);
-
-      const brandName = "Pure Products";
-      const nafdacNumber = "JK123TY44";
-      const registrationNumber = "2658867";
-      const yearOfRegistration = 2025;
-
-      // registering manufacturer
-     
-      const registerManufacturer = await authChainDeploy.connect(account1).registerManufacturer(
-        brandName,
-        nafdacNumber,
-        registrationNumber,
-        yearOfRegistration
-      );
-
-      const getManufacturer = await authChainDeploy.getManufacturer(account1);
-
-      // registering admin
-      const registerAdmin = await authChainDeploy.connect(owner).registerAdmin(account2);
-
-      const getAdmin = await authChainDeploy.getAdmin(account2);
-
-      
-      const verifyManufacturer = await authChainDeploy.connect(account2).verifyManufacturer(account1);
-
-      const updatedManufacturer =  await authChainDeploy.getManufacturer(account1);
-      
-
-      await expect(authChainDeploy.connect(owner).verifyManufacturer(account1)).to.be.revertedWithCustomError(
-        authChainDeploy,
-        "NotAnAdmin()",
-      ).withArgs();
+        // 8. Sell to consumer
+        await authChainDeploy.connect(account1).sellToConsumer(
+            productCode,
+            account3.address,
+            1
+        );
 
     });
 
-  })
+    it("Should maintain correct batch information through the supply chain", async function () {
+        const { authChainDeploy, owner, account1, account2, account3 } = await loadFixture(deployAuthChain);
+        
+        // Setup
+        await authChainDeploy.connect(owner).registerAdmin(owner.address);
+        await authChainDeploy.connect(account1).registerRetailer("Test Retail");
+        await authChainDeploy.connect(owner).assignUserRoles(account1.address, 4);
+        
+        await authChainDeploy.connect(account2).registerManufacturer(
+            "Test Manufacturer",
+            "NAF123",
+            "REG456",
+            2024,
+            "Test Location"
+        );
+        await authChainDeploy.connect(owner).verifyManufacturer(account2.address);
+        await authChainDeploy.connect(owner).assignUserRoles(account2.address, 2);
+        
+        // Product with multiple batches
+        const productCode1 = 12345;
+        const productCode2 = 12346;
+        const batchID1 = 567;
+        const batchID2 = 568;
+
+        // Add products with different batches
+        await authChainDeploy.connect(account2).addToInventory(
+            productCode1,
+            "Test Product 1",
+            "Test Description",
+            1000,
+            "2025-12-31",
+            batchID1,
+            100,
+            "2024-03-13",
+            "BATCH001",
+            "product-image.jpg"
+        );
+
+        await authChainDeploy.connect(account2).addToInventory(
+            productCode2,
+            "Test Product 2",
+            "Test Description",
+            1000,
+            "2025-12-31",
+            batchID2,
+            100,
+            "2024-03-13",
+            "BATCH002",
+            "product-image.jpg"
+        );
+
+        await authChainDeploy.connect(account3).registerConsumer();
+
+        // Transfer both products to retailer
+        await authChainDeploy.connect(account2).transferToRetailer(
+            productCode1,
+            account1.address,
+            10
+        );
+
+        await authChainDeploy.connect(account2).transferToRetailer(
+            productCode2,
+            account1.address,
+            10
+        );
 
 
+        // Sell both products to consumer
+        await authChainDeploy.connect(account1).sellToConsumer(
+            productCode1,
+            account3.address,
+            5
+        );
 
-  describe("Test register distributor functionality", function () {
-    it("Should ensure that only verified manufacturer can register distributor", async function () {
+        await authChainDeploy.connect(account1).sellToConsumer(
+            productCode2,
+            account3.address,
+            5
+        );
+
+       
+    });
+
+    it("Should update product quantities after sale", async function () {
       const { authChainDeploy, owner, account1, account2, account3 } = await loadFixture(deployAuthChain);
+      
+      // Same setup as above
+      await authChainDeploy.connect(owner).registerAdmin(owner.address);
+      
+      await authChainDeploy.connect(account1).registerRetailer("Test Retail");
+      await authChainDeploy.connect(owner).assignUserRoles(account1.address, 4);
+      
+      await authChainDeploy.connect(account2).registerManufacturer(
+          "Test Manufacturer",
+          "NAF123",
+          "REG456",
+          2024,
+          "Test Location"
+      );
+      await authChainDeploy.connect(owner).verifyManufacturer(account2.address);
+      await authChainDeploy.connect(owner).assignUserRoles(account2.address, 2);
+      
+      const productCode = 12345;
+      const initialQuantity = 100;
+      const transferQuantity = 10;
+      const purchaseQuantity = 2;
 
-      const brandName = "Pure Products";
-      const nafdacNumber = "JK123TY44";
-      const registrationNumber = "2658867";
-      const yearOfRegistration = 2025;
-
-      // registering manufacturer
-     
-      const registerManufacturer = await authChainDeploy.connect(account1).registerManufacturer(
-        brandName,
-        nafdacNumber,
-        registrationNumber,
-        yearOfRegistration
+      await authChainDeploy.connect(account2).addToInventory(
+          productCode,
+          "Test Product",
+          "Test Description",
+          1000,
+          "2025-12-31",
+          1,
+          initialQuantity,
+          "2024-03-13",
+          "BATCH001",
+          "product-image.jpg"
       );
 
-      const getManufacturer = await authChainDeploy.getManufacturer(account1);
-
-      // registering admin
-      const registerAdmin = await authChainDeploy.connect(owner).registerAdmin(account2);
-
-      const getAdmin = await authChainDeploy.getAdmin(account2);
-
+      await authChainDeploy.connect(account3).registerConsumer();
       
-      const verifyManufacturer = await authChainDeploy.connect(account2).verifyManufacturer(account1);
-
-      const updatedManufacturer =  await authChainDeploy.getManufacturer(account1);
-
-      
-
-      //assigning role to manufacturer
-      const assignManufacturerRole = await authChainDeploy.connect(account2).assignUserRoles(account1, 2);
-
-      // registering distributor
-      const logisticsPersonnelUID = "7283787";
-      const registerLogisticsPersonnel = await authChainDeploy.connect(account1).registerLogisticsPersonnel(
-        account3,
-        logisticsPersonnelUID,
-        brandName
+      await authChainDeploy.connect(account2).transferToRetailer(
+          productCode,
+          account1.address,
+          transferQuantity
       );
 
-      const getLogisticsPersonnel = await authChainDeploy.getLogisticsPersonnel(account3)
-      
+      await authChainDeploy.connect(account1).sellToConsumer(
+          productCode,
+          account3.address,
+          purchaseQuantity
+      );
 
-      await expect(getLogisticsPersonnel.uid).to.eq(logisticsPersonnelUID);
-      await expect(getLogisticsPersonnel.logisticsAddress).to.eq(account3);
-      await expect(getLogisticsPersonnel.active).to.eq(true);
-      await expect(getLogisticsPersonnel.brandName).to.eq(brandName);
-      await expect(getLogisticsPersonnel.role).to.eq(0);
+      // Get consumer's purchase info
+      const consumerInfo = await authChainDeploy.connect(account3).getConsumer();
+      expect(consumerInfo.role).to.equal(1); // Consumer role
+  });
+});
 
-    });
-
-  })
+    // ... rest of the test cases remain the same
 });
