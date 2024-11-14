@@ -312,7 +312,7 @@ contract AuthChain {
         require(product.availableQuantity >= _quantity, "Insufficient quantity available");
 
         if(logisticsPersonnel[_logisticPersonnelAddress].active == false){
-            revert NotARetailer();
+            revert Errors.NotARetailer();
         }
     
         // Update manufacturer's available quantity
@@ -324,7 +324,7 @@ contract AuthChain {
         newStock.receivedDate = block.timestamp;
         newStock.remainingQuantity = _quantity;
         newStock.batchID = product.batchID;  // Add the batchID from the product
-        newStock.logisticPersonnelToDeliver = _logisticPersonnel;
+        newStock.logisticPersonnelToDeliver = _logisticPersonnelAddress;
         
         Manufacturer storage manufact = manufacturer[msg.sender];
         TrackingStruct storage trackProduct = trackingHistory[newStock.batchID];
@@ -338,7 +338,7 @@ contract AuthChain {
         trackProduct.manufacturer.totalProducts = manufact.totalProducts;
         trackProduct.manufacturer.inventory[_productCode] = manufact.inventory[_productCode];
 
-        LogisticsPersonnel storage logist = logisticsPersonnel[_logisticPersonnel];
+        LogisticsPersonnel storage logist = logisticsPersonnel[_logisticPersonnelAddress];
         trackProduct.logisticsPersonnel.logisticsAddress = logist.logisticsAddress;
         trackProduct.logisticsPersonnel.uid = logist.uid;
         trackProduct.logisticsPersonnel.brandName = logist.brandName;
