@@ -11,8 +11,19 @@ contract AuthChain {
     }
 
     // user roles to manage access controls
-    enum userRole { Default, Consumers, Manufacturer, LogisticsPersonnel, Retailers, Admin }
-    enum ProductStatus { MANUFACTURED, WITH_RETAILER, SOLD_TO_CONSUMER }
+    enum userRole { 
+        Default, 
+        Consumers, 
+        Manufacturer, 
+        LogisticsPersonnel, 
+        Retailers, 
+        Admin 
+    }
+    // enum ProductStatus { 
+    //     MANUFACTURED, 
+    //     WITH_RETAILER, 
+    //     SOLD_TO_CONSUMER 
+    // }
 
     // Event role to manage events
     event UserRoleAssigned(
@@ -71,10 +82,11 @@ contract AuthChain {
         uint256 receivedDate;
         uint256 remainingQuantity;
         uint256 batchID;
+        address logisticPersonnelToDeliver;
     }
 
    // CONSUMER
-   struct Consumer {
+    struct Consumer {
         userRole role;
         mapping(uint256 => uint256) purchaseQuantities; // productId => quantity
         mapping(uint256 => uint256) purchaseTimes; // productId => purchaseTime
@@ -87,6 +99,49 @@ contract AuthChain {
         userRole role;
     }
 
+    // Tracking Product and Status updates
+    enum ProductStatus {
+        MANUFACTURED,         
+        IN_TRANSIT_TO_LOGISTICPERSONNEL,  
+        IN_TRANSIT_TO_RETAILER, 
+        WITH_RETAILER,      
+        SOLD_TO_CONSUMER,    
+        RETURNED,  
+        RECALLED
+    }
+
+    struct ManufacturerToLogisticStatus {
+        bool manufacturerDelivered;
+        bool logisticAccepted;
+    }
+
+    struct LogisticToRetailerStatus {
+        bool logisticDelivered;
+        bool RetailerAccepted;
+    }
+
+    struct RetailerToLogisticStatus{
+        bool retailerDelivered;
+        bool logisticReceived;
+    }
+
+    struct LogisticToCustomerStatus{
+        bool logisticDelivered;
+        bool customerReceived;
+    }
+
+    struct TrackingStruct {
+        Manufacturer manufacturer;
+        LogisticsPersonnel logisticsPersonnel;
+        Retailer retailer;
+        Consumer consumer;
+        ManufacturerToLogisticStatus manufacturerToLogistic;
+        LogisticToRetailerStatus logisticToRetailer;
+        RetailerToLogisticStatus retailerToLogistic;
+        LogisticToCustomerStatus logisticToCustomer;
+        ProductStatus productStatus;
+    }
+
 
     //mapping to retrieve users
     mapping (address => Manufacturer) manufacturer;
@@ -95,6 +150,9 @@ contract AuthChain {
     mapping (address => Consumer) consumer;
     mapping(address => Admin) admin;
     mapping(uint256 => address[]) public productTrail;
+
+    //tracking based on product code to tracking struct
+    mapping(uint256 => TrackingStruct) trackingHistory;
 
     // private functions for access control
     function onlyManfacturer() private view {
@@ -184,8 +242,6 @@ contract AuthChain {
             status: ProductStatus.MANUFACTURED
         });
 
-        
-
         manufacturer[msg.sender].inventory[_productCode] = newProduct;
         manufacturer[msg.sender].totalProducts++;
         
@@ -228,17 +284,11 @@ contract AuthChain {
 
         emit Events.RetailerRegistered(msg.sender, _brandName);
     }
-
-  
    
     function registerConsumer() external {
-        
-
-         consumer[msg.sender].role = userRole.Default;
+        consumer[msg.sender].role = userRole.Default;
         emit Events.RetailerRegistered(msg.sender, "Consumer");
     }
-
-    
 
     /**
      * Transfer a product from a manufacturer to a retailer
@@ -246,31 +296,64 @@ contract AuthChain {
      * @param _quantity: the quantity of the product to transfer
      */
     function transferToRetailer(
-    uint256 _productCode,
-    address _retailer,
-    uint256 _quantity
-) public {
-    onlyManfacturer();
-    require(retailer[_retailer].role == userRole.Retailers, "Retailer not verified");
+        uint256 _productCode,
+        address _retailer,
+        uint256 _quantity,
+        address _logisticPersonnelAddress
+    ) public {
+        onlyManfacturer();
+        // checks if the retailer is present or verified to be a retailer
+        require(retailer[_retailer].role == userRole.Retailers, "Retailer not verified");
+        // fetches product details from manufacturer
+        Product storage product = manufacturer[msg.sender].inventory[_productCode];
+        // is this product manufactured and or listed to the market
+        require(product.status == ProductStatus.MANUFACTURED, "Product not available for transfer");
+
+        require(product.availableQuantity >= _quantity, "Insufficient quantity available");
+
+        if(logisticsPersonnel[_logisticPersonnelAddress].active == false){
+            revert NotARetailer();
+        }
     
-    Product storage product = manufacturer[msg.sender].inventory[_productCode];
-    require(product.status == ProductStatus.MANUFACTURED, "Product not available for transfer");
-    require(product.availableQuantity >= _quantity, "Insufficient quantity available");
+        // Update manufacturer's available quantity
+        product.availableQuantity -= _quantity;
     
-    // Update manufacturer's available quantity
-    product.availableQuantity -= _quantity;
-    
-    // Update retailer's inventory with batchID
-    RetailerStock storage newStock = retailer[_retailer].inventory[_productCode];
-    newStock.quantity = _quantity;
-    newStock.receivedDate = block.timestamp;
-    newStock.remainingQuantity = _quantity;
-    newStock.batchID = product.batchID;  // Add the batchID from the product
-    
-    emit Events.ProductToRetailer(_productCode, _retailer, _quantity);
+        // Update retailer's inventory with batchID
+        RetailerStock storage newStock = retailer[_retailer].inventory[_productCode];
+        newStock.quantity = _quantity;
+        newStock.receivedDate = block.timestamp;
+        newStock.remainingQuantity = _quantity;
+        newStock.batchID = product.batchID;  // Add the batchID from the product
+        newStock.logisticPersonnelToDeliver = _logisticPersonnel;
+        
+        Manufacturer storage manufact = manufacturer[msg.sender];
+        TrackingStruct storage trackProduct = trackingHistory[newStock.batchID];
+        trackProduct.manufacturer.brandName =  manufact.brandName;
+        trackProduct.manufacturer.verify = manufact.verify;
+        trackProduct.manufacturer.nafdac_no = manufact.nafdac_no;
+        trackProduct.manufacturer.registration_no = manufact.registration_no;
+        trackProduct.manufacturer.yearOfRegistration = manufact.yearOfRegistration;
+        trackProduct.manufacturer.location = manufact.location;
+        trackProduct.manufacturer.role = manufact.role;
+        trackProduct.manufacturer.totalProducts = manufact.totalProducts;
+        trackProduct.manufacturer.inventory[_productCode] = manufact.inventory[_productCode];
+
+        LogisticsPersonnel storage logist = logisticsPersonnel[_logisticPersonnel];
+        trackProduct.logisticsPersonnel.logisticsAddress = logist.logisticsAddress;
+        trackProduct.logisticsPersonnel.uid = logist.uid;
+        trackProduct.logisticsPersonnel.brandName = logist.brandName;
+        trackProduct.logisticsPersonnel.active = logist.active;
+        trackProduct.logisticsPersonnel.role = logist.role;
+
+        Retailer storage reta = retailer[_retailer];
+        trackProduct.retailer.brandName = reta.brandName;
+        trackProduct.retailer.role = reta.role;
+        trackProduct.retailer.inventory[_productCode] = newStock;
+
+        trackProduct.manufacturerToLogistic.manufacturerDelivered = true;
+        trackProduct.productStatus = ProductStatus.IN_TRANSIT_TO_LOGISTICPERSONNEL;
+        emit Events.ProductToRetailer(_productCode, _retailer, _quantity);
 }
-
-
 
     /**
      * Transfer a product from a retailer to a consumer
@@ -278,9 +361,9 @@ contract AuthChain {
      * @param _quantity: the quantity of the product to transfer
      */
     function sellToConsumer(
-    uint256 _productCode,
-    address _consumerAddress,
-    uint256 _quantity
+        uint256 _productCode,
+        address _consumerAddress,
+        uint256 _quantity
 ) public {
     onlyRetailer();
     
