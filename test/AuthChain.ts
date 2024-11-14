@@ -135,7 +135,8 @@ describe("AuthChain", function () {
           await authChainDeploy.connect(account2).transferToRetailer(
               productCode,
               account1.address,
-              10
+              10,
+              account3.address
           );
   
           // 7. Sell to consumer
@@ -198,10 +199,9 @@ describe("AuthChain", function () {
         await authChainDeploy.connect(account2).transferToRetailer(
             productCode,
             account1.address,
-            10
+            10,
+            account3.address
         );
-
-        
 
         // 8. Sell to consumer
         await authChainDeploy.connect(account1).sellToConsumer(
@@ -269,13 +269,15 @@ describe("AuthChain", function () {
         await authChainDeploy.connect(account2).transferToRetailer(
             productCode1,
             account1.address,
-            10
+            10,
+            account3.address
         );
 
         await authChainDeploy.connect(account2).transferToRetailer(
             productCode2,
             account1.address,
-            10
+            10,
+            account3.address
         );
 
 
@@ -337,7 +339,8 @@ describe("AuthChain", function () {
       await authChainDeploy.connect(account2).transferToRetailer(
           productCode,
           account1.address,
-          transferQuantity
+          transferQuantity,
+          account3.address
       );
 
       await authChainDeploy.connect(account1).sellToConsumer(
