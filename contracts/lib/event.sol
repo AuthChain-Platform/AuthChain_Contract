@@ -48,5 +48,8 @@ library Events {
         address indexed consumer,
         uint256 quantity
     );
+  event OrderPlaced(uint256 orderId, uint256 productCode, string productName, uint256 quantity, address requester);
+event OrderApproved(uint256 orderId);
+event OrderShipped(uint256 orderId);
 
 }

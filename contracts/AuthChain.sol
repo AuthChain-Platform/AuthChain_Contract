@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.27;
 
-import "./lib/error.sol";
-import "./lib/event.sol";
+import{Errors} from  "./lib/error.sol";
+import  {Events} from"./lib/event.sol";
 
 contract AuthChain {
     address public adminUser;
@@ -19,11 +19,6 @@ contract AuthChain {
         Retailers, 
         Admin 
     }
-    // enum ProductStatus { 
-    //     MANUFACTURED, 
-    //     WITH_RETAILER, 
-    //     SOLD_TO_CONSUMER 
-    // }
 
     // Event role to manage events
     event UserRoleAssigned(
@@ -46,6 +41,48 @@ contract AuthChain {
         string productImage;
         ProductStatus status;
     }
+// struct to represent an order
+    struct Order {
+    uint256 orderId;
+    uint256 productCode;
+    string productName;
+    uint256 quantity;
+    address requester;
+    bool isApproved;
+    bool isShipped;
+}
+
+mapping(uint256 => Order) public orders;
+
+uint256 public nextOrderId;
+
+// Function to request a product
+function requestProduct(uint256 _productCode, string memory _productName, uint256 _quantity) public {
+    // Create a new order
+    Order memory newOrder = Order(nextOrderId, _productCode, _productName, _quantity, msg.sender, false, false);
+    orders[nextOrderId] = newOrder;
+    nextOrderId++;
+    emit Events.OrderPlaced(newOrder.orderId, newOrder.productCode, newOrder.productName, newOrder.quantity, newOrder.requester);
+}
+
+// Function to approve an order
+function approveOrder(uint256 _orderId) public {
+    require(orders[_orderId].orderId == _orderId, "Order does not exist");
+    require(!orders[_orderId].isApproved, "Order is already approved");
+    orders[_orderId].isApproved = true;
+    emit Events.OrderApproved(_orderId);
+}
+
+// Function to ship an order
+function shipOrder(uint256 _orderId) public {
+    require(orders[_orderId].orderId == _orderId, "Order does not exist");
+    require(orders[_orderId].isApproved, "Order is not approved");
+    require(!orders[_orderId].isShipped, "Order is already shipped");
+    orders[_orderId].isShipped = true;
+    Product storage _product = manufacturer[msg.sender].inventory[orders[_orderId].productCode];
+    _product.availableQuantity -= orders[_orderId].quantity;
+    emit Events.OrderShipped(_orderId);
+}
 
     // MANUFACTURER
     struct Manufacturer {
@@ -143,6 +180,8 @@ contract AuthChain {
     }
 
 
+
+
     //mapping to retrieve users
     mapping (address => Manufacturer) manufacturer;
     mapping (address => LogisticsPersonnel) logisticsPersonnel;
@@ -150,9 +189,14 @@ contract AuthChain {
     mapping (address => Consumer) consumer;
     mapping(address => Admin) admin;
     mapping(uint256 => address[]) public productTrail;
+    mapping(uint256 => Product) public product;
+    // mapping(uint256 => Order) public orders;  //mapping to store orders
 
     //tracking based on product code to tracking struct
     mapping(uint256 => TrackingStruct) trackingHistory;
+
+
+    // mappin
 
     // private functions for access control
     function onlyManfacturer() private view {
@@ -337,19 +381,16 @@ contract AuthChain {
         trackProduct.manufacturer.role = manufact.role;
         trackProduct.manufacturer.totalProducts = manufact.totalProducts;
         trackProduct.manufacturer.inventory[_productCode] = manufact.inventory[_productCode];
-
         LogisticsPersonnel storage logist = logisticsPersonnel[_logisticPersonnelAddress];
         trackProduct.logisticsPersonnel.logisticsAddress = logist.logisticsAddress;
         trackProduct.logisticsPersonnel.uid = logist.uid;
         trackProduct.logisticsPersonnel.brandName = logist.brandName;
         trackProduct.logisticsPersonnel.active = logist.active;
         trackProduct.logisticsPersonnel.role = logist.role;
-
         Retailer storage reta = retailer[_retailer];
         trackProduct.retailer.brandName = reta.brandName;
         trackProduct.retailer.role = reta.role;
         trackProduct.retailer.inventory[_productCode] = newStock;
-
         trackProduct.manufacturerToLogistic.manufacturerDelivered = true;
         trackProduct.productStatus = ProductStatus.IN_TRANSIT_TO_LOGISTICPERSONNEL;
         emit Events.ProductToRetailer(_productCode, _retailer, _quantity);
@@ -383,6 +424,7 @@ contract AuthChain {
     
     emit Events.ProductSoldToConsumer(_productCode, _consumerAddress, _quantity);
 }
+    
 
 
     // function to register admin
