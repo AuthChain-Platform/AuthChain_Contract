@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.27;
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
 import "./ProductManagement.sol";
 import "./UserRoleManager.sol";
@@ -22,6 +23,27 @@ contract ManufacturerManagement {
         uint256 totalProducts;
         mapping(uint256 => uint256) productCodes;
     }
+    
+  
+     struct Product {
+        uint256 productCode;
+        string name;
+        uint256 price;
+        uint256 batchID;
+        string productDescription;
+        uint256 quantity;
+        uint256 availableQuantity;
+        string productImage;
+        bool status;
+        address owner;  // Track owner of the product
+        bool available;
+        uint256 productionDate;
+        uint256 expiryDate;
+    }
+
+    mapping(uint256 => Product) public products;
+    
+    uint256[] public productList;
 
     mapping(address => Manufacturer) public manufacturers;
 
@@ -92,34 +114,71 @@ contract ManufacturerManagement {
         manufacturer.location = location;
     }
 
-    // Add product to manufacturer
-    function addProduct(
-        address manufacturerAddress,
-        uint256 productCode,
-        string memory name,
-        uint256 price,
-        uint256 batchID,
-        string memory expiryDate,
-        string memory productDescription,
-        uint256 quantity,
+
+ function createProductCode(uint256 _id) internal returns (string memory batchId) {
+    return string(abi.encodePacked("authChain_", Strings.toString(_id)));
+}
+
+
+
+   uint256 productCreatedCountid; //uique productCountet id
+
+    function createProduct(
+        string memory productName,
+        uint256 quantityInStock,
+        uint256 productionDate,
+        uint256 expiryDate,
+        bool status,
         string memory productImage
-
-    ) public onlyVerifiedManufacturer(manufacturerAddress) {
-        Manufacturer storage manufacturer = manufacturers[manufacturerAddress];
-
-        productManagement.addProduct(
-            productCode,
-            name,
-            price,
-            batchID,
-            expiryDate,
-            productDescription,
-            quantity,
-            productImage
-        );
-        
-        // Add the product code to the manufacturer's list of product codes
-        manufacturer.productCodes[manufacturer.totalProducts] = productCode;
-        manufacturer.totalProducts++;
+    ) public onlyVerifiedManufacturer(msg.sender) returns(string memory batchId) {
+        uint256 _id = productCreatedCountid;
+       Product storage _products = products[_id];
+       _products.name = productName;
+       _products.availableQuantity = quantityInStock;
+       _products.productionDate = productionDate;
+       _products.expiryDate = expiryDate;
+       _products.available = status;
+       _products.productImage = productImage;
+       productCreatedCountid ++;
+      batchId = createProductCode(quantityInStock);
+     return batchId;
     }
+
+
+
+
+
+
+
+
+//  listProdcuts
+
+
+    // Add product to manufacturer
+    // function createProduct(
+    //     address manufacturerAddress,
+    //     string memory name,
+    //     uint256 price,
+    //     uint256 batchID,
+    //     string memory expiryDate,
+    //     string memory productDescription,
+    //     uint256 quantity,
+    //     string memory productImage
+
+    // ) public onlyVerifiedManufacturer(manufacturerAddress) {
+    //     Manufacturer storage manufacturer = manufacturers[manufacturerAddress];
+    //     productManagement.createProduct(
+    //         name,
+    //         price,
+    //         batchID,
+    //         expiryDate,
+    //         productDescription,
+    //         quantity,
+    //         productImage
+    //     );
+        
+    //     // Add the product code to the manufacturer's list of product codes
+    //     manufacturer.productCodes[manufacturer.totalProducts] = productCode;
+    //     manufacturer.totalProducts++;
+    // }
 }
