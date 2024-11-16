@@ -9,8 +9,17 @@ contract OrderManagement {
     uint256 quantity;
   }
 
-  struct OrderStatus {
-    
+  enum OrderStatus {
+    DISPATCHED,
+    DELIVERED_TO_RETAILER,
+    RECEIVED_BY_RETAILER,     
+    IN_TRANSIT_TO_LOGISTICPERSONNEL,  
+    IN_TRANSIT_TO_RETAILER, 
+    WITH_RETAILER,      
+    SOLD_TO_CONSUMER,    
+    RETURNED,  
+    RECALLED,
+    AVAILABLE_FOR_SALE
   }
 
   struct Order {
@@ -19,6 +28,8 @@ contract OrderManagement {
     // array of Items in Order
     OrderItem[] totalCost;
     OrderStatus status;
+    string overallStatus;
+
   }
 
 

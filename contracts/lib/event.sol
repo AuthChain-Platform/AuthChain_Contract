@@ -49,4 +49,14 @@ library Events {
         uint256 quantity
     );
 
+    event ProductSuccessfullyListedToMarket(
+        uint256 indexed _batchId, 
+        string _productName,
+        uint256 _qtyInStock,
+        uint256 _productionDate,
+        uint256 _expiryDate,
+        string status,
+        string productImage
+     );
+
 }

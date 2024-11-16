@@ -1,46 +1,26 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.27;
 
+import "../lib/event.sol";
+
 contract ProductManagement {
 
     uint256 batchId;
-    
-    // enum ProductStatus {
-    //     MANUFACTURED,
-    //     LISTED,
-    //     AVAILABLE,
-    //     LOW_STOCK,
-    //     OUT_OF_STOCK
-    //     // DISPATCHED,
-    //     // DELIVERED_TO_RETAILER,
-    //     // RECEIVED_BY_RETAILER       
-    //     //IN_TRANSIT_TO_LOGISTICPERSONNEL,  
-    //     // IN_TRANSIT_TO_RETAILER, 
-    //     // WITH_RETAILER,      
-    //     // SOLD_TO_CONSUMER,    
-    //     // RETURNED,  
-    //     // RECALLED,
-    //     // AVAILABLE_FOR_SALE
-    // }
 
     struct Product {
-        // uint256 batchID;
-        // uint256 productCode;
         string name;
         uint256 price;
         uint256 originalQuantityFromCreation;
         uint256 quantityInStock;
         uint256 productionDate;
         uint256 expiryDate;
-        //ProductStatus status;
         string productDescription;
         string productImage;
-        address owner;  // Track owner of the product
+        address[] listOfAllOwners;  // Track owner of the product
         bool available;
     }
 
     mapping(uint256 => Product) public products;
-    // mapping(uint256 => ProductStatus) public batchedProductStatus;
     
     uint256[] public productList;
 
@@ -48,39 +28,36 @@ contract ProductManagement {
     event ProductStatusUpdated(uint256 productCode, string newStatus);
 
     // Add new product
-    function addProduct(
-        uint256 productCode,
+    function createProduct(
         string memory name,
-        uint256 price,
-        //uint256 batchID,
-        uint256  _expiryDate,
+        uint256 _expiryDate,
         string memory productDescription,
         uint256 quantity,
         uint256 _productionDate,
         string memory productImage
-    ) public {
+    ) internal returns(uint256) {
         //require(products[batchId].productCode == 0, "Product already exists");
 
         batchId += 1;
-        products[batchId] = Product(
-            // productCode,
-            // batchID,
-            name,
-            price,
-            quantity,
-            quantity, // initially available quantity is total quantity
-            _productionDate,
-            _expiryDate,
-            ProductStatus.MANUFACTURED,
-            productDescription,
-            productImage,
-            msg.sender, // Manufacturer is the owner initially
-            true
-        );
+        Product storage newProduct = products[batchId];
+        newProduct.name = name;
+        newProduct.price = 0;
+        newProduct.originalQuantityFromCreation = quantity;
+        newProduct.quantityInStock = quantity;
+        newProduct.productionDate = _productionDate;
+        newProduct.expiryDate = _expiryDate;
+        newProduct.productDescription = productDescription;
+        newProduct.productImage = productImage;
+        newProduct.listOfAllOwners.push(msg.sender); 
+        newProduct.available = true;
+        
         productList.push(batchId);
+
+        return batchId;
+        
     }
 
-    function verifyProductStats(uint256 _batchId) external view returns (string memory) {
+    function verifyProductStats(uint256 _batchId) internal view returns (string memory) {
     require(products[_batchId].quantityInStock > 0, "Product not found");
 
         uint256 quantityInStock = products[_batchId].quantityInStock;
@@ -95,6 +72,34 @@ contract ProductManagement {
             return "Available";
         }
     }
+
+    function listProductToMarket(uint256 _batchId, 
+        uint256 _price, 
+        uint256 _quantity) external {
+        require(products[_batchId].price != 0, "Product Do not Exist");
+
+        //need chainlink pricefeed here to convert price to USD
+
+        Product storage productForMarket = products[_batchId];
+        require(productForMarket.available == false, "Product Is Non Existence");
+
+        productForMarket.price = _price;
+
+        string prodName = productForMarket.name;
+        uint256 quantityInStock = productForMarket.quantityInStock;
+        uint256 prodDate = productForMarket.productionDate;
+        uint256 expDate = productForMarket.expiryDate;
+        string _status = verifyProductStats(batchId);
+        // if(_status == "Available"){
+        //     _status = "Listed";
+        // }
+        string prdImage = productForMarket.productImage;
+
+        emit Events.ProductSuccessfullyListedToMarket(_batchId, prodName,
+        quantityInStock, prodDate, expDate, _status, prdImage);
+    }
+
+
 
 
         // Get product details
@@ -133,16 +138,16 @@ contract ProductManagement {
 
 
     // Update product status
-    function updateProductStatus(uint256 productCode, ProductStatus newStatus) public {
-        Product storage product = products[productCode];
+    // function updateProductStatus(uint256 productCode, ProductStatus newStatus) public {
+    //     Product storage product = products[productCode];
         
-        require(product.productCode != 0, "Product not found");
-        require(msg.sender == product.owner, "Only the owner can update product status"); 
+    //     require(product.productCode != 0, "Product not found");
+    //     require(msg.sender == product.owner, "Only the owner can update product status"); 
 
-        product.status = newStatus;
+    //     product.status = newStatus;
     
-        emit ProductStatusUpdated(productCode, newStatus);
-    }
+    //     emit ProductStatusUpdated(productCode, newStatus);
+    // }
 
 
     // Transfer product ownership (from manufacturer to retailer)
