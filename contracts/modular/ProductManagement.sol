@@ -37,7 +37,7 @@ contract ProductManagement {
     event ProductStatusUpdated(uint256 productCode, ProductStatus newStatus);
 
     // Add new product
-    function addProduct(
+    function createPro(
         uint256 productCode,
         string memory name,
         uint256 price,
