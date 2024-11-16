@@ -2,68 +2,100 @@
 pragma solidity 0.8.27;
 
 contract ProductManagement {
+
+    uint256 batchId;
     
-    enum ProductStatus {
-        MANUFACTURED,         
-        IN_TRANSIT_TO_LOGISTICPERSONNEL,  
-        IN_TRANSIT_TO_RETAILER, 
-        WITH_RETAILER,      
-        SOLD_TO_CONSUMER,    
-        RETURNED,  
-        RECALLED,
-        AVAILABLE_FOR_SALE
-    }
+    // enum ProductStatus {
+    //     MANUFACTURED,
+    //     LISTED,
+    //     AVAILABLE,
+    //     LOW_STOCK,
+    //     OUT_OF_STOCK
+    //     // DISPATCHED,
+    //     // DELIVERED_TO_RETAILER,
+    //     // RECEIVED_BY_RETAILER       
+    //     //IN_TRANSIT_TO_LOGISTICPERSONNEL,  
+    //     // IN_TRANSIT_TO_RETAILER, 
+    //     // WITH_RETAILER,      
+    //     // SOLD_TO_CONSUMER,    
+    //     // RETURNED,  
+    //     // RECALLED,
+    //     // AVAILABLE_FOR_SALE
+    // }
 
     struct Product {
-        uint256 productCode;
+        // uint256 batchID;
+        // uint256 productCode;
         string name;
         uint256 price;
-        uint256 batchID;
-        string expiryDate;
+        uint256 originalQuantityFromCreation;
+        uint256 quantityInStock;
+        uint256 productionDate;
+        uint256 expiryDate;
+        //ProductStatus status;
         string productDescription;
-        uint256 quantity;
-        uint256 availableQuantity;
         string productImage;
-        ProductStatus status;
         address owner;  // Track owner of the product
         bool available;
     }
 
     mapping(uint256 => Product) public products;
+    // mapping(uint256 => ProductStatus) public batchedProductStatus;
     
     uint256[] public productList;
 
     event ProductSold(uint256 productCode, address buyer, uint256 quantity);
-    event ProductStatusUpdated(uint256 productCode, ProductStatus newStatus);
+    event ProductStatusUpdated(uint256 productCode, string newStatus);
 
     // Add new product
     function addProduct(
-        uint256 productCode,
+        // uint256 productCode,
         string memory name,
         uint256 price,
-        uint256 batchID,
-        string memory expiryDate,
+        //uint256 batchID,
+        uint256  _expiryDate,
         string memory productDescription,
         uint256 quantity,
+        uint256 _productionDate,
         string memory productImage
     ) public {
-        require(products[productCode].productCode == 0, "Product already exists");
-        products[productCode] = Product(
-            productCode,
+        //require(products[batchId].productCode == 0, "Product already exists");
+
+        batchId += 1;
+        products[batchId] = Product(
+            // productCode,
+            // batchID,
             name,
             price,
-            batchID,
-            expiryDate,
-            productDescription,
             quantity,
             quantity, // initially available quantity is total quantity
-            productImage,
+            _productionDate,
+            _expiryDate,
             ProductStatus.MANUFACTURED,
+            productDescription,
+            productImage,
             msg.sender, // Manufacturer is the owner initially
             true
         );
-        productList.push(productCode);
+        productList.push(batchId);
     }
+
+    function verifyProductStats(uint256 _batchId) external view returns (string memory) {
+    require(products[_batchId].quantityInStock > 0, "Product not found");
+
+        uint256 quantityInStock = products[_batchId].quantityInStock;
+        uint256 originalQuantity = products[_batchId].originalQuantityFromCreation;
+
+        if (quantityInStock == 0) {
+            return "Out of Stock";
+        } else if (quantityInStock < originalQuantity / 4) {
+            // Here 'low stock' means less than 25% of the original quantity
+            return "Low Stock";
+        } else {
+            return "Available";
+        }
+    }
+
 
         // Get product details
     function getProduct(uint256 productCode) public view returns (Product memory) {
