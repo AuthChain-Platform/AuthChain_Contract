@@ -49,7 +49,7 @@ contract ProductManagement {
 
     // Add new product
     function addProduct(
-        // uint256 productCode,
+        uint256 productCode,
         string memory name,
         uint256 price,
         //uint256 batchID,
