@@ -30,8 +30,7 @@ contract ManufacturerManagement {
         mapping(uint256 => uint256) productCodes;
     }
     
-  
-     struct Product {
+    struct Product {
         uint256 productCode;
         string name;
         uint256 price;
@@ -41,7 +40,7 @@ contract ManufacturerManagement {
         uint256 availableQuantity;
         string productImage;
         bool status;
-        address owner;  // Track owner of the product
+        address manufacturer;  // Track owner of the product
         bool available;
         uint256 productionDate;
         uint256 expiryDate;
@@ -52,6 +51,7 @@ contract ManufacturerManagement {
     uint256[] public productList;
 
     mapping(address => Manufacturer) public manufacturers;
+    // tracks manufacturer to batchId to productCode
     mapping(address => mapping(uint => string[])) public identifier;
 
     modifier onlyOwner() {

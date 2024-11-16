@@ -28,8 +28,6 @@ library Events {
         address indexed manufacturerAddress
     );
 
-    
-
     event ProductAdded(
         uint256 indexed productCode,
         string productName,
@@ -57,6 +55,14 @@ library Events {
         uint256 _expiryDate,
         string status,
         string productImage
-     );
+    );
+
+    event OrderRequested(
+        address indexed retailer,
+        uint256 amountPaid,
+        uint256 orderId, 
+        uint256 batchId, 
+        uint256 quantity
+    );
 
 }
