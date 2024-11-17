@@ -16,13 +16,17 @@ contract ConsumerManagement {
         uint256 id;
         string name;
         string email;
+        string location;
+        string state;
+        string image;
         string physicalAddress;
         bool verified;
         uint256 totalProductsBought;
-        mapping(uint256 => uint256) purchasedProducts;
     }
 
     mapping(address => Consumer) public consumers;
+    mapping(address => uint256[]) public consumerPurchases;
+    address[] public allConsumers;
 
     modifier onlyAdmin() {
         require(msg.sender == owner, "Only the owner can perform this action");
@@ -30,7 +34,7 @@ contract ConsumerManagement {
     }
 
     modifier onlyVerifiedConsumer() {
-        require(consumers[msg.sender].verified, "Only verified consumers can perform this action");
+        require(consumers[msg.sender].verified == true, "Only verified consumers can perform this action");
         _;
     }
 
@@ -40,114 +44,123 @@ contract ConsumerManagement {
         productManagement = ProductManagement(_productManagement);
     }
 
-    // Register a new consumer
     function registerConsumer(
         string memory name,
         string memory email,
+        string memory location,
+        string memory state,
+        string memory image,
         string memory physicalAddress
-    ) public onlyAdmin {
+    ) public {
+        require(consumers[msg.sender].id == 0, "Consumer is already registered");
 
-        uint256 newConsumerId = id + 1;
+        uint256 newConsumerId = ++id;
         Consumer storage newConsumer = consumers[msg.sender];
 
         newConsumer.id = newConsumerId;
         newConsumer.name = name;
         newConsumer.email = email;
+        newConsumer.location = location;
+        newConsumer.state = state;
+        newConsumer.image = image;
         newConsumer.physicalAddress = physicalAddress;
         newConsumer.verified = true;
         newConsumer.totalProductsBought = 0;
 
-        // Assign the Consumers role to the new consumer
         userRoleManager.assignRole(msg.sender, UserRoleManager.userRole.Consumers);
+        allConsumers.push(msg.sender);
     }
 
-    function buyProduct(uint256 productCode, uint256 quantity) public payable onlyVerifiedConsumer {
-        
-        require(productManagement.isProductAvailable(productCode), "Product not available for sale");
-       
-        uint256 productPrice = productManagement.getProductPrice(productCode);
-        uint256 totalPrice = productPrice * quantity;
-        
-        require(msg.value >= totalPrice, "Insufficient payment");
 
-        productManagement.buyProduct{value: totalPrice}(productCode, quantity);
-
-        Consumer storage consumer = consumers[msg.sender];
-        
-        for (uint256 i = 0; i < quantity; i++) {
-            consumer.purchasedProducts[consumer.totalProductsBought] = productCode;
-            consumer.totalProductsBought++;
-        }
-    }
-
-    // Consumer sells a product to another consumer
-    function sellProduct(address buyerAddress, uint256 productCode) public onlyVerifiedConsumer {
- 
-        Consumer storage seller = consumers[msg.sender];        // Confirms the product is owned by the seller
-       
-        bool ownsProduct = false;
-
-        for (uint256 i = 0; i < seller.totalProductsBought; i++) {
-            if (seller.purchasedProducts[i] == productCode) {
-                ownsProduct = true;
-                break;
-            }
-        }
-
-        require(ownsProduct, "You do not own this product");
-
-        // Transfer the product ownership 
-        seller.totalProductsBought--;
-       
-        for (uint256 i = 0; i < seller.totalProductsBought; i++) {
-            if (seller.purchasedProducts[i] == productCode) {
-                seller.purchasedProducts[i] = seller.purchasedProducts[seller.totalProductsBought];
-            }
-        }
-
-        // Add product to the buyer's profile
-        Consumer storage buyer = consumers[buyerAddress];
-        buyer.purchasedProducts[buyer.totalProductsBought] = productCode;
-        buyer.totalProductsBought++;
-
-        // Updates product status to show the new owner of the product
-        productManagement.transferProductOwnership(productCode, buyerAddress);
-    }
-
-    // Update consumer information
     function updateConsumerInfo(
-
+        string memory name,
+        string memory email,
         string memory physicalAddress
     ) public {
         Consumer storage consumer = consumers[msg.sender];
+        consumer.name = name;
+        consumer.email = email;
         consumer.physicalAddress = physicalAddress;
     }
 
-    // Deregister a consumer
     function deregisterConsumer(address consumerAddress) public onlyAdmin {
         delete consumers[consumerAddress];
+        delete consumerPurchases[consumerAddress];
     }
 
-    // Verify a consumer
-    function verifyConsumer(address consumerAddress, bool isVerified) public onlyAdmin {
-        consumers[consumerAddress].verified = isVerified;
+    function getConsumerDetails(address consumerAddress) public view returns (Consumer memory) {
+        return consumers[consumerAddress];
     }
 
-    // Get consumer details
-    function getConsumerDetails(address consumerAddress) public view returns (string memory name, string memory email, string memory physicalAddress, bool verified) {
-        Consumer storage consumer = consumers[consumerAddress];
-        return (consumer.name, consumer.email, consumer.physicalAddress, consumer.verified);
+    function getConsumerPurchases(address consumerAddress) public view returns (uint256[] memory) {
+        return consumerPurchases[consumerAddress];
     }
 
-    // View all purchased products by a consumer
-    function viewPurchasedProducts(address consumerAddress) public view returns (uint256[] memory) {
-        Consumer storage consumer = consumers[consumerAddress];
-        
-        uint256[] memory products = new uint256[](consumer.totalProductsBought);
-        
-        for (uint256 i = 0; i < consumer.totalProductsBought; i++) {
-            products[i] = consumer.purchasedProducts[i];
+    function getProductInfo(uint256 productCode) public view returns (string memory) {
+        (
+            string memory name,
+            uint256 price,
+            uint256 batchID,
+            uint256 expiryDate,
+            string memory productDescription,
+            uint256 availableQuantity,
+            string memory productImage,
+            ProductManagement.ProductStatus status,
+            address _owner,
+            uint256 trackingID
+        ) = productManagement.getProductDetails(productCode);
+
+        if (status == ProductManagement.ProductStatus.MANUFACTURED) {
+            return string(abi.encodePacked(
+                "Name: ", name, ", ",
+                "Price: ", uint2str(price), ", ",
+                "Batch ID: ", uint2str(batchID), ", ",
+                "Expiry Date: ", uint2str(expiryDate), ", ",
+                "Description: ", productDescription, ", ",
+                "Available Quantity: ", uint2str(availableQuantity), ", ",
+                "Product Image: ", productImage, ", ",
+                "Tracking ID: ", uint2str(trackingID), ", ",
+                "Owner: ", addressToString(_owner)
+            ));
+        } else {
+            return "Product Not Available";
         }
-        return products;
+    }
+
+
+    // Helper function to convert uint256 to string
+    function uint2str(uint256 _i) internal pure returns (string memory _uintAsString) {
+        if (_i == 0) {
+            return "0";
+        }
+        uint256 j = _i;
+        uint256 len;
+        while (j != 0) {
+            len++;
+            j /= 10;
+        }
+        bytes memory bstr = new bytes(len);
+        uint256 k = len - 1;
+        while (_i != 0) {
+            bstr[k--] = bytes1(uint8(48 + _i % 10));
+            _i /= 10;
+        }
+        return string(bstr);
+    }
+
+    // Helper function to convert address to string
+    function addressToString(address _addr) internal pure returns (string memory) {
+        return string(abi.encodePacked("0x", toHexString(uint256(uint160(_addr)), 20)));
+    }
+
+    // Helper function for address to hex string conversion
+    function toHexString(uint256 value, uint256 length) internal pure returns (string memory) {
+        bytes16 _HEX_SYMBOLS = "0123456789abcdef";
+        bytes memory buffer = new bytes(2 * length);
+        for (uint256 i = 2 * length; i > 0; i--) {
+            buffer[i - 1] = _HEX_SYMBOLS[value & 0xf];
+            value >>= 4;
+        }
+        return string(buffer);
     }
 }
