@@ -142,6 +142,12 @@ contract AuthChain {
         ProductStatus productStatus;
     }
 
+    // struct TrackingStruct {
+    //     uint _productCode;
+    //     uint _productStatus;
+    //     uint 
+    // }
+
 
     //mapping to retrieve users
     mapping (address => Manufacturer) manufacturer;
@@ -179,7 +185,6 @@ contract AuthChain {
         }
     }
 
-
     /**
      * Registering a manufacturer 
      * @param _brandName: the name of the manufacturer
@@ -203,8 +208,6 @@ contract AuthChain {
 
         emit Events.ManufacturerRegistered(msg.sender, _brandName, _nafdac_no, _yearOfRegistration);
     }
-
-
 
     /**
      * Adding a product to the inventory of a manufacturer
@@ -314,9 +317,11 @@ contract AuthChain {
         if(logisticsPersonnel[_logisticPersonnelAddress].active == false){
             revert Errors.NotARetailer();
         }
+
+        manufacturer[msg.sender].inventory[_productCode].quantity -= _quantity;
     
         // Update manufacturer's available quantity
-        product.availableQuantity -= _quantity;
+        product.availableQuantity = manufacturer[msg.sender].inventory[_productCode].quantity;
     
         // Update retailer's inventory with batchID
         RetailerStock storage newStock = retailer[_retailer].inventory[_productCode];
@@ -353,7 +358,46 @@ contract AuthChain {
         trackProduct.manufacturerToLogistic.manufacturerDelivered = true;
         trackProduct.productStatus = ProductStatus.IN_TRANSIT_TO_LOGISTICPERSONNEL;
         emit Events.ProductToRetailer(_productCode, _retailer, _quantity);
-}
+    }
+
+    function getTrackingInfo(uint _productCode) external view returns(string memory currentStatus, string memory manufacturerDetails,
+    LogisticsPersonnel memory logisticsDetails, 
+    string memory retailerDetails) {
+        TrackingStruct storage track = trackingHistory[_productCode];
+
+        return (
+            productStatusToString(track.productStatus),
+            track.manufacturer.brandName,
+            track.logisticsPersonnel,
+            track.retailer.brandName
+        );
+    }
+
+    function productStatusToString(ProductStatus _status) internal pure returns (string memory) {
+        if (_status == ProductStatus.MANUFACTURED) return "Manufactured";
+        if (_status == ProductStatus.IN_TRANSIT_TO_LOGISTICPERSONNEL) return "In Transit to Logistic Personnel";
+        if (_status == ProductStatus.IN_TRANSIT_TO_RETAILER) return "In Transit to Retailer";
+        if (_status == ProductStatus.WITH_RETAILER) return "With Retailer";
+        if (_status == ProductStatus.SOLD_TO_CONSUMER) return "Sold to Consumer";
+        if (_status == ProductStatus.RETURNED) return "Returned";
+        if (_status == ProductStatus.RECALLED) return "Recalled";
+        return "Unknown";
+    }
+
+    // function getTrackingHistory(uint _productCode) internal view returns (TrackingStruct storage){
+    //     // Manufacturer storage manufact = manufacturer[_manufacturerAddress];
+    //     // Product memory prodStatus = manufact.inventory[_productCode].status;
+
+    //     //, address _manufacturerAddress
+
+    //     TrackingStruct storage tracknHistory = trackingHistory[_productCode];
+    //     return trackingHistory;
+
+    // }
+
+    // function track(uint _prodktCode) {
+
+    // }
 
     /**
      * Transfer a product from a retailer to a consumer

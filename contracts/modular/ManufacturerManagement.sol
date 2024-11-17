@@ -10,8 +10,14 @@ contract ManufacturerManagement {
     uint256 id;
     
     address public owner;
-    ProductManagement public productManagement;
-    UserRoleManager public userRoleManager;
+    ProductManagement productManagement;
+    UserRoleManager userRoleManager;
+
+    constructor(address _productManagementAddress, address _userRoleManagerAddress) {
+        owner = msg.sender;
+        productManagement = ProductManagement(_productManagementAddress);
+        userRoleManager = UserRoleManager(_userRoleManagerAddress);
+    }
 
     struct Manufacturer {
         string brandName;
@@ -24,8 +30,7 @@ contract ManufacturerManagement {
         mapping(uint256 => uint256) productCodes;
     }
     
-  
-     struct Product {
+    struct Product {
         uint256 productCode;
         string name;
         uint256 price;
@@ -35,7 +40,7 @@ contract ManufacturerManagement {
         uint256 availableQuantity;
         string productImage;
         bool status;
-        address owner;  // Track owner of the product
+        address manufacturer;  // Tracking owner of the product
         bool available;
         uint256 productionDate;
         uint256 expiryDate;
@@ -46,6 +51,8 @@ contract ManufacturerManagement {
     uint256[] public productList;
 
     mapping(address => Manufacturer) public manufacturers;
+    // tracks manufacturer to batchId to productCode
+    mapping(address => mapping(uint => string[])) public identifier;
 
     modifier onlyOwner() {
         require(msg.sender == owner, "Only the owner can perform this action");
@@ -57,15 +64,8 @@ contract ManufacturerManagement {
         _;
     }
 
-    constructor(address _productManagementAddress, address _userRoleManagerAddress) {
-        owner = msg.sender;
-        productManagement = ProductManagement(_productManagementAddress);
-        userRoleManager = UserRoleManager(_userRoleManagerAddress);
-    }
-
     // Register a new manufacturer
     function registerManufacturer(
-
         address manufacturerAddress,
         string memory brandName,
         string memory nafdac_no,
@@ -114,34 +114,33 @@ contract ManufacturerManagement {
         manufacturer.location = location;
     }
 
+    function createProductCode(uint256 _id) internal returns (string memory batchId) {
+        return string(abi.encodePacked("authChain_", Strings.toString(_id)));
+    }
 
- function createProductCode(uint256 _id) internal returns (string memory batchId) {
-    return string(abi.encodePacked("authChain_", Strings.toString(_id)));
-}
-
-
-
-   uint256 productCreatedCountid; //uique productCountet id
+    uint256 productCreatedCountid; //uique productCountet id
 
     function createProduct(
-        string memory productName,
-        uint256 quantityInStock,
-        uint256 productionDate,
-        uint256 expiryDate,
-        bool status,
-        string memory productImage
-    ) public onlyVerifiedManufacturer(msg.sender) returns(string memory batchId) {
-        uint256 _id = productCreatedCountid;
-       Product storage _products = products[_id];
-       _products.name = productName;
-       _products.availableQuantity = quantityInStock;
-       _products.productionDate = productionDate;
-       _products.expiryDate = expiryDate;
-       _products.available = status;
-       _products.productImage = productImage;
-       productCreatedCountid ++;
-      batchId = createProductCode(quantityInStock);
-     return batchId;
+        string memory _productName,
+        uint256 _expiryDate,
+        uint256 _quantity,
+        uint256 _productionDate,
+        string memory _productImage
+    ) public onlyVerifiedManufacturer(msg.sender) returns(uint256 batchId, string[] memory productIds) {
+
+        uint256 _batchId = productManagement.createProduct(_productName, _expiryDate, "", _quantity, _productionDate, _productImage);
+    
+        productIds = new uint256[](_quantity);
+        for (uint256 loopThrough = 0; loopThrough < _quantity;  loopThrough++){
+            productIds[loopThrough] = _productName + _batchId + loopThrough;
+        } 
+        return (_batchId, productIds);
+    }
+
+    function listProduct(uint256 _batchId, uint256 _price,
+    uint256 _quantity) public {
+        require(manufacturers[msg.sender].verify == true, "Only verified manufacturers can list products");
+        productManagement.listProductToMarket(_batchId, _price, quantity);
     }
 
 

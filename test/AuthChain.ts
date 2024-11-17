@@ -129,7 +129,7 @@ describe("AuthChain", function () {
           );
   
           // 5. Register consumer
-          await authChainDeploy.connect(consumer).registerConsumer();
+        //   await authChainDeploy.connect(consumer).registerConsumer();
           
           // 6. Transfer product to retailer
           await authChainDeploy.connect(manufacturer).transferToRetailer(
@@ -138,6 +138,8 @@ describe("AuthChain", function () {
               10,
               logistics.address
           );
+
+          await expect(authChainDeploy.connect(manufacturer).)
   
           // 7. Sell to consumer
     //       await expect(
