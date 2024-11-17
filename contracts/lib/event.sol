@@ -65,4 +65,5 @@ library Events {
         uint256 quantity
     );
 
+    event OrderApproved(uint256 _orderId, address whoApproves, address whoIsApproved, string orderStatus);
 }
