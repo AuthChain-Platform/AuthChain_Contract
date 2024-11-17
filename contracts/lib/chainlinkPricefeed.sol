@@ -10,4 +10,10 @@ library ChainlinkPriceFeed {
         // Price of ETH in terms of USD
         return uint256(price * 1e10);
     }
+
+    function getConversionRate(uint256 ethAmount, AggregatorV3Interface priceFeed) internal view returns(uint256) {
+        uint256 ethPrice = getETHToUSDPrice(priceFeed);
+        uint256 ethAmountinUsd = (ethPrice * ethAmount) / 1e18;
+        return ethAmountinUsd;
+    }
 }
