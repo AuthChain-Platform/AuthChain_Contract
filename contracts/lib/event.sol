@@ -50,6 +50,7 @@ library Events {
     event ProductSuccessfullyListedToMarket(
         uint256 indexed _batchId, 
         string _productName,
+        uint256 _price,
         uint256 _qtyInStock,
         uint256 _productionDate,
         uint256 _expiryDate,

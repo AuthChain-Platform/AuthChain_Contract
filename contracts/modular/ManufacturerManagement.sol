@@ -40,7 +40,7 @@ contract ManufacturerManagement {
         uint256 availableQuantity;
         string productImage;
         bool status;
-        address manufacturer;  // Track owner of the product
+        address manufacturer;  // Tracking owner of the product
         bool available;
         uint256 productionDate;
         uint256 expiryDate;
@@ -132,9 +132,9 @@ contract ManufacturerManagement {
     
         productIds = new uint256[](_quantity);
         for (uint256 loopThrough = 0; loopThrough < _quantity;  loopThrough++){
-            productIds[loopThrough] = _productName + brandName + loopThrough;
+            productIds[loopThrough] = _productName + _batchId + loopThrough;
         } 
-        return (batchId, productIds);
+        return (_batchId, productIds);
     }
 
     function listProduct(uint256 _batchId, uint256 _price,
