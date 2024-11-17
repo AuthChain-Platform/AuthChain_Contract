@@ -9,6 +9,7 @@ contract UserRoleManager {
         Manufacturer, 
         LogisticsPersonnel, 
         Retailers, 
+        Distributor,
         Admin 
     }
 
