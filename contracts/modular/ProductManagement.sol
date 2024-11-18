@@ -2,6 +2,7 @@
 pragma solidity 0.8.27;
 
 import "../lib/event.sol";
+import "../lib/chainlinkPricefeed.sol";
 
 contract ProductManagement {
     uint256 batchId;
@@ -18,9 +19,7 @@ contract ProductManagement {
         address[] listOfAllOwners; // Track owner of the product
         bool available;
     }
-// if(_status == "Available"){
-        //     _status = "Listed";
-        // }
+
     mapping(uint256 => Product) public products;
 
     uint256[] public productList;
@@ -78,7 +77,7 @@ contract ProductManagement {
 
     function listProductToMarket(
         uint256 _batchId,
-        uint256 _price,
+        uint256 _priceInEth,
         uint256 _quantity
     ) external {
         require(products[_batchId].price != 0, "Product Do not Exist");
@@ -89,9 +88,9 @@ contract ProductManagement {
         
         require(productForMarket.quantityInStock > 0, "Product out of stock");
         require(_quantity <= productForMarket.quantityInStock, "Insufficient stock to list");
-        require(_price > 0, "Price must be greater than zero");
+        require(_priceInEth > 0, "Price must be greater than zero");
 
-        productForMarket.price = _price;
+        productForMarket.price = _priceInEth;
         productForMarket.quantityInStock -= _quantity;
 
         string memory _status = verifyProductStats(_batchId);
@@ -99,7 +98,7 @@ contract ProductManagement {
         emit Events.ProductSuccessfullyListedToMarket(
             _batchId,
             productForMarket.name,
-            _price,
+            _priceInEth,
             _quantity,
             productForMarket.productionDate,
             productForMarket.expiryDate,
