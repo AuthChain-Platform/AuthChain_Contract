@@ -65,6 +65,8 @@ library Events {
         uint256 batchId, 
         uint256 quantity
     );
+   event ProductDispatched(string batchId, address logisticsAddress);
+  event  ProductReceivedFromManufacturer(string productId, address manufacturerAddress, uint timestamp);
 
     event OrderApproved(uint256 _orderId, address whoApproves, address whoIsApproved, string orderStatus);
 }

@@ -11,7 +11,7 @@ contract DistributorManagement {
     UserRoleManager public userRoleManager; 
     ProductManagement public productManagement;
 
-    // Distributor struct
+  // Distributor struct
     struct Distributor {
         uint256 id;
         string companyName;
@@ -35,6 +35,7 @@ contract DistributorManagement {
         productManagement = ProductManagement(_productManagementAddress);
     }
 
+    
     // Register a new distributor
     function registerDistributor(
         address distributorAddress,
@@ -113,5 +114,18 @@ contract DistributorManagement {
         }
 
         return distributions;
+    }
+
+    function dispatchToLogistics(string memory batchId, address logisticsAddress) external {
+
+       
+       
+        emit Events.ProductDispatched(batchId, logisticsAddress);
+
+    }
+
+    function receiveFromManufacturer(string memory productId) external {
+
+     emit Events.ProductReceivedFromManufacturer(productId, msg.sender, block.timestamp);
     }
 }
