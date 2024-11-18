@@ -116,16 +116,28 @@ contract DistributorManagement {
         return distributions;
     }
 
-    function dispatchToLogistics(string memory batchId, address logisticsAddress) external {
+function dispatchToLogistics(string memory batchId, address logisticsPersonnelAddress) external {
+    // Update product status to "Dispatched to Logistics"
+    productManagement.updateProductStatus(batchId, "Dispatched to Logistics");
+    
+    // Set logistics team as custodian
+    productManagement.setCustodian(batchId, logisticsPersonnelAddress);
+    
+    // Record dispatch timestamp in journey log
+    productManagement.recordJourneyLog(batchId, "Dispatched to Logistics", block.timestamp);
+    
+    // Emit status
+    emit Events.ProductStatusUpdated(batchId, "Dispatched to Logistics");
+}
 
-       
-       
-        emit Events.ProductDispatched(batchId, logisticsAddress);
-
-    }
-
-    function receiveFromManufacturer(string memory productId) external {
-
-     emit Events.ProductReceivedFromManufacturer(productId, msg.sender, block.timestamp);
-    }
+function receiveFromManufacturer(string memory productId) external {
+    // Update product status to "Received from Manufacturer"
+    productManagement.updateProductStatus(productId, "Received from Manufacturer");
+    
+    // Record receive timestamp in journey log
+    productManagement.recordJourneyLog(productId, "Received from Manufacturer", block.timestamp);
+    
+    // Emit status, timestamp, and manufacturer address
+    emit Events.ProductReceivedFromManufacturer(productId, msg.sender, block.timestamp);
+}
 }

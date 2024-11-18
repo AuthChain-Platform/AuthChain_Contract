@@ -65,6 +65,8 @@ library Events {
         uint256 batchId, 
         uint256 quantity
     );
+    event ProductJourneyLogUpdated(uint256 batchId, string log, uint256 timestamp);
+
    event ProductDispatched(string batchId, address logisticsAddress);
   event  ProductReceivedFromManufacturer(string productId, address manufacturerAddress, uint timestamp);
 

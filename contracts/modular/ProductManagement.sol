@@ -157,7 +157,56 @@ contract ProductManagement {
                 keccak256(bytes(_productStatus)) == keccak256(bytes("Low Stock"
         )));
     }
+
+
+
+    // Update product status
+function updateProductStatus(uint256 _batchId, string memory newStatus) public {
+    Product storage product = products[_batchId];
+
+    require(product.available, "Product is not available");
+    require(keccak256(bytes(newStatus)) != keccak256(bytes("")), "New status cannot be empty");
+
+    emit ProductStatusUpdated(_batchId, newStatus);
 }
+
+// Set custodian
+function setCustodian(uint256 _batchId, address newCustodian) public {
+    Product storage product = products[_batchId];
+
+    require(product.available, "Product is not available");
+    require(newCustodian != address(0), "New custodian cannot be zero address");
+
+    product.listOfAllOwners.push(newCustodian);
+}
+
+// Record journey log
+function recordJourneyLog(uint256 _batchId, string memory log, uint256 timestamp) public {
+    Product storage product = products[_batchId];
+
+    require(product.available, "Product is not available");
+    require(keccak256(bytes(log)) != keccak256(bytes("")), "Log cannot be empty");
+    require(timestamp > 0, "Timestamp cannot be zero");
+
+    emit Events.ProductJourneyLogUpdated(_batchId, log, timestamp);
+}
+
+// Transfer product ownership (from manufacturer to retailer)
+function transferProductOwnership(uint256 _batchId, address newOwner) public {
+    Product storage product = products[_batchId];
+
+    require(product.available, "Product is not available");
+    require(newOwner != address(0), "New owner cannot be zero address");
+
+    product.listOfAllOwners.push(newOwner);
+}
+}
+
+
+
+
+
+
 
     // // Buy product function
     // function buyProduct(uint256 productCode, uint256 quantity) public payable {
