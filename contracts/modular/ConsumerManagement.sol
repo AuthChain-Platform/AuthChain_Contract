@@ -27,6 +27,7 @@ contract ConsumerManagement {
     mapping(address => Consumer) public consumers;
     mapping(address => uint256[]) public consumerPurchases;
     address[] public allConsumers;
+    mapping(address => UserRoleManager.userRole) public consumerRoles;
 
     modifier onlyAdmin() {
         require(msg.sender == owner, "Only the owner can perform this action");
@@ -54,9 +55,9 @@ contract ConsumerManagement {
     ) public {
         require(consumers[msg.sender].id == 0, "Consumer is already registered");
 
-        uint256 newConsumerId = ++id;
-        Consumer storage newConsumer = consumers[msg.sender];
+        uint256 newConsumerId = ++id; 
 
+        Consumer storage newConsumer = consumers[msg.sender];
         newConsumer.id = newConsumerId;
         newConsumer.name = name;
         newConsumer.email = email;
@@ -68,25 +69,51 @@ contract ConsumerManagement {
         newConsumer.totalProductsBought = 0;
 
         userRoleManager.assignRole(msg.sender, UserRoleManager.userRole.Consumers);
+        
+        consumerRoles[msg.sender] = UserRoleManager.userRole.Consumers;
+
         allConsumers.push(msg.sender);
     }
+
+        function checkRetailerRole(address consumersAddress) public view returns (string memory) {
+        if (consumerRoles[consumersAddress] == UserRoleManager.userRole.Consumers) {
+            return "Retailer";
+        }
+        return "No Role";
+    }
+
 
 
     function updateConsumerInfo(
         string memory name,
         string memory email,
         string memory physicalAddress
-    ) public {
+    ) public onlyVerifiedConsumer {
         Consumer storage consumer = consumers[msg.sender];
         consumer.name = name;
         consumer.email = email;
         consumer.physicalAddress = physicalAddress;
     }
 
+
+    function verifyConsumer(address consumerAddress) public onlyAdmin {
+        consumers[consumerAddress].verified = true;
+    }
+
+
     function deregisterConsumer(address consumerAddress) public onlyAdmin {
         delete consumers[consumerAddress];
         delete consumerPurchases[consumerAddress];
+
+        for (uint256 i = 0; i < allConsumers.length; i++) {
+            if (allConsumers[i] == consumerAddress) {
+                allConsumers[i] = allConsumers[allConsumers.length - 1];
+                allConsumers.pop();
+                break;
+            }
+        }
     }
+
 
     function getConsumerDetails(address consumerAddress) public view returns (Consumer memory) {
         return consumers[consumerAddress];
@@ -110,6 +137,8 @@ contract ConsumerManagement {
             uint256 trackingID
         ) = productManagement.getProductDetails(productCode);
 
+        require(status != ProductManagement.ProductStatus.NON_EXISTENT, "Product does not exist");
+
         if (status == ProductManagement.ProductStatus.MANUFACTURED) {
             return string(abi.encodePacked(
                 "Name: ", name, ", ",
@@ -126,6 +155,7 @@ contract ConsumerManagement {
             return "Product Not Available";
         }
     }
+
 
 
     // Helper function to convert uint256 to string

@@ -16,6 +16,11 @@ contract RetailerManagement {
             uint256 quantitySold; // Quantity of the product sold
         }
 
+    struct ProductPurchase {
+        uint256 productId;
+        uint256 quantity;
+    }
+    
     struct Retailer {
         uint256 id;
         string retailerName;
@@ -25,19 +30,27 @@ contract RetailerManagement {
         string state;
         string image;
         bool verified;
-        uint256 totalSales; 
-        mapping(uint256 => uint256) purchasedProductIds; // Track product IDs bought
-        mapping(uint256 => uint256) productQuantities; // Track quantities of products bought
-        mapping(uint256 => uint256) soldProductIds; // Track product IDs sold
+        uint256 totalSales;
         uint256 totalProducts;
+        uint256[] soldProductIds;
+        ProductPurchase[] purchasedProducts;
     }
 
-    mapping(address => Retailer) public retailers;
-    mapping(uint256 => ProductSale) public soldProductDetails; 
+    uint256 totalSales; // Represents total monetary sales
+    uint256[] soldProductIds; // Array to store sold product IDs
 
+    mapping(uint256 => uint256) purchasedProductIds; 
+    mapping(uint256 => uint256) productQuantities;
+
+    mapping(address => Retailer) public retailers;
     address[] public allRetailers;
 
+    mapping(address => UserRoleManager.userRole) public retailerRoles;
 
+    
+    mapping(uint256 => ProductSale) public soldProductDetails; 
+
+    
     event ProductPurchased(uint256 productId, address buyer, uint256 quantity, uint256 totalPrice, uint256 trackingId);
 
 
@@ -95,52 +108,48 @@ contract RetailerManagement {
 
         allRetailers.push(msg.sender);
 
+        retailerRoles[msg.sender] = UserRoleManager.userRole.Retailers;
+
         userRoleManager.assignRole(msg.sender, UserRoleManager.userRole.Retailers);
+    }
+
+    function checkRetailerRole(address retailersAddress) public view returns (string memory) {
+        if (retailerRoles[retailersAddress] == UserRoleManager.userRole.Retailers) {
+            return "Retailer";
+        }
+        return "No Role";
     }
 
 
     function buy(uint256 productId, uint256 quantity) public payable onlyVerifiedRetailer {
-            require(quantity > 0, "Quantity must be greater than zero");
+        require(quantity > 0, "Quantity must be greater than zero");
 
-            ( , uint256 price, , , , uint256 availableQuantity, , , ,) = productManagement.getProductDetails(productId);
-            require(availableQuantity >= quantity, "Insufficient stock");
+        (, uint256 price, , , , uint256 availableQuantity, , , ,) = productManagement.getProductDetails(productId);
+        require(availableQuantity >= quantity, "Insufficient stock");
 
-            uint256 totalPrice = price * quantity;
-            require(msg.value >= totalPrice, "Insufficient funds");
+        uint256 totalPrice = price * quantity;
+        require(msg.value >= totalPrice, "Insufficient funds");
 
-            uint256 trackingId = uint256(keccak256(abi.encodePacked(block.timestamp, msg.sender, productId, quantity)));
+        productManagement.purchaseProduct{value: totalPrice}(productId, quantity);
 
-            productManagement.purchaseProduct{value: totalPrice}(productId, quantity);
+        Retailer storage retailer = retailers[msg.sender];
+        retailer.totalSales += totalPrice;
+        retailer.totalProducts -= quantity;
 
-            for (uint i = 0; i < allRetailers.length; i++) {
-                if (allRetailers[i] == msg.sender) { 
-                    retailers[allRetailers[i]].totalProducts -= quantity;  
-                    retailers[allRetailers[i]].totalSales += totalPrice; 
-                    break;
-                }
-            }
+        soldProductDetails[productId].quantitySold += quantity;
+        soldProductDetails[productId].totalRevenue += totalPrice;
 
-            // Record the sale of the product globally
-            soldProductDetails[productId].productId = productId;
-            soldProductDetails[productId].quantitySold += quantity;
-            soldProductDetails[productId].totalRevenue += totalPrice;
+        if (msg.value > totalPrice) {
+            payable(msg.sender).transfer(msg.value - totalPrice);
+        }
 
-            payable(msg.sender).transfer(totalPrice);
-
-            emit ProductPurchased(productId, msg.sender, quantity, totalPrice, trackingId);
-
-            if (msg.value > totalPrice) {
-                payable(msg.sender).transfer(msg.value - totalPrice);
-            }
+        emit ProductPurchased(productId, msg.sender, quantity, totalPrice, block.timestamp);
     }
 
 
-    function retailerRevenue(address retailerAddress) public view  returns (uint256) {
-
+    function retailerRevenueByAddress(address retailerAddress) public view returns (uint256) {
         Retailer storage retailer = retailers[retailerAddress];
-        uint256 totalRevenue = retailer.totalSales;
-
-        return totalRevenue;
+        return retailer.totalSales;
     }
 
     function retailerRevenue() public view onlyVerifiedRetailer returns (uint256) {
@@ -152,32 +161,17 @@ contract RetailerManagement {
     }
 
 
-    function getProductsOfRetailer() public view returns (uint256[] memory, uint256[] memory) {
-        require(retailers[msg.sender].verified, "Retailer is not verified");
-
+    function getProductsOfRetailer() public view returns (uint256[] memory productIds, uint256[] memory quantities) {
         Retailer storage retailer = retailers[msg.sender];
-        uint256 totalProducts = retailer.totalProducts;
+        uint256 totalProducts = retailer.purchasedProducts.length;
 
-        uint256 uniqueProductsCount = 0;
+        productIds = new uint256[](totalProducts);
+        quantities = new uint256[](totalProducts);
+
         for (uint256 i = 0; i < totalProducts; i++) {
-            if (retailer.purchasedProductIds[i] > 0) {
-                uniqueProductsCount++;
-            }
+            productIds[i] = retailer.purchasedProducts[i].productId;
+            quantities[i] = retailer.purchasedProducts[i].quantity;
         }
-
-        uint256[] memory productIds = new uint256[](uniqueProductsCount);
-        uint256[] memory quantities = new uint256[](uniqueProductsCount);
-
-        uint256 index = 0;
-        for (uint256 productId = 0; productId < totalProducts; productId++) {
-            if (retailer.purchasedProductIds[productId] > 0) {
-                productIds[index] = productId;
-                quantities[index] = retailer.productQuantities[productId];
-                index++;
-            }
-        }
-
-        return (productIds, quantities);
     }
 
 
@@ -192,7 +186,6 @@ contract RetailerManagement {
         uint256 totalSales,
         uint256 totalProducts
     ) {
-        require(retailers[retailerAddress].verified, "Retailer is not verified");
         Retailer storage retailer = retailers[retailerAddress];
         return (
             retailer.retailerName,
@@ -206,6 +199,7 @@ contract RetailerManagement {
             retailer.totalProducts
         );
     }
+
 
     function getProductInfo(uint256 productCode) public view returns (string memory) {
         (
@@ -265,14 +259,18 @@ contract RetailerManagement {
         require(retailerAddress != address(0), "Invalid retailer address");
 
         Retailer storage retailer = retailers[retailerAddress];
-        uint256[] memory products = new uint256[](retailer.totalSales);
+        require(retailer.verified, "Retailer not verified");
 
-        for (uint256 i = 0; i < retailer.totalSales; i++) {
-            products[i] = retailer.soldProductIds[i];
+        // Use purchasedProducts.length instead of totalSales
+        uint256[] memory soldProducts = new uint256[](retailer.purchasedProducts.length);
+
+        for (uint256 i = 0; i < retailer.purchasedProducts.length; i++) {
+            soldProducts[i] = retailer.purchasedProducts[i].productId;
         }
 
-        return products;
+        return soldProducts;
     }
+
 
 
     function viewAllRegisteredRetailers() public view returns (address[] memory) {
@@ -281,9 +279,11 @@ contract RetailerManagement {
 
   
     function updateProductQuantity(uint256 productId, uint256 quantity) public onlyVerifiedRetailer {
-        require(productManagement.getProductOwner(productId) == msg.sender, "Only the product owner can update the quantity");
-        Retailer storage retailer = retailers[msg.sender];
-        retailer.productQuantities[productId] = quantity;
+
+        address productOwner = productManagement.getProductOwner(productId);
+        require(productOwner == msg.sender, "Caller is not the product owner");
+
+        productQuantities[productId] = quantity;
     }
 
 
@@ -293,12 +293,13 @@ contract RetailerManagement {
 
 
     function deregisterRetailer(address retailerAddress) public onlyAdmin {
-        delete retailers[retailerAddress]; 
-        
-        Retailer storage retailer = retailers[retailerAddress];
-        for (uint256 i = 0; i < retailer.totalProducts; i++) {
-            delete retailer.purchasedProductIds[i]; 
-            delete retailer.productQuantities[i]; 
+        delete retailers[retailerAddress];
+        for (uint256 i = 0; i < allRetailers.length; i++) {
+            if (allRetailers[i] == retailerAddress) {
+                allRetailers[i] = allRetailers[allRetailers.length - 1];
+                allRetailers.pop();
+                break;
+            }
         }
     }
 

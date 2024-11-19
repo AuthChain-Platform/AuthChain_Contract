@@ -27,6 +27,8 @@ contract DistributorManagement {
     }
 
     Distributor[] public allDistributors;
+    mapping(address => UserRoleManager.userRole) public distributorRoles;
+
 
     event ProductPurchased(uint256 productId, address buyer, uint256 quantity, uint256 totalPrice, uint256 trackingId);
 
@@ -38,14 +40,15 @@ contract DistributorManagement {
     modifier onlyVerifiedDistributor() {
         bool isVerified = false;
         for (uint i = 0; i < allDistributors.length; i++) {
-            if (allDistributors[i].verified == true) {
+            if (allDistributors[i].distributorAddress == msg.sender && allDistributors[i].verified) {
                 isVerified = true;
                 break;
             }
         }
         require(isVerified, "Only verified distributor can perform this action");
-        _; 
+        _;
     }
+
 
     constructor(address _userRoleManager, address _productManagementAddress) {
         owner = msg.sender;
@@ -68,6 +71,8 @@ contract DistributorManagement {
         }
 
         uint256 newDistributorId = id + 1;
+        id = newDistributorId;
+
 
         allDistributors.push(Distributor({
 
@@ -86,17 +91,22 @@ contract DistributorManagement {
 
         }));
 
+        distributorRoles[msg.sender] = UserRoleManager.userRole.Distributor;
+
+
         userRoleManager.assignRole(msg.sender, UserRoleManager.userRole.Distributor);
     }
 
     function deregisterDistributor(uint256 distributorId) public onlyOwner {
         for (uint i = 0; i < allDistributors.length; i++) {
             if (allDistributors[i].id == distributorId) {
-                delete allDistributors[i];
+                allDistributors[i] = allDistributors[allDistributors.length - 1];
+                allDistributors.pop();
                 break;
             }
         }
     }
+
 
     function updateDistributorInfo(
         uint256 distributorId,
@@ -125,19 +135,27 @@ contract DistributorManagement {
     }
 
     function viewPurchasedProductQuantities(uint256 distributorId) public view returns (uint256[] memory, uint256[] memory) {
+        
         uint256[] memory productIds = new uint256[](allDistributors.length);
         uint256[] memory quantities = new uint256[](allDistributors.length);
-        uint256 index = 0;
 
         for (uint i = 0; i < allDistributors.length; i++) {
             if (allDistributors[i].id == distributorId) {
-                productIds[index] = allDistributors[i].totalProducts;
-                quantities[index] = allDistributors[i].totalDistributions;
-                index++;
+                productIds[0] = allDistributors[i].totalProducts;
+                quantities[0] = allDistributors[i].totalDistributions;
+                break;
             }
         }
         return (productIds, quantities);
     }
+
+    function checkDistributorRole(address distributorAddress) public view returns (string memory) {
+        if (distributorRoles[distributorAddress] == UserRoleManager.userRole.Distributor) {
+            return "Distributor";
+        }
+        return "No Role";
+    }
+
 
 
     function buy(uint256 productId, uint256 quantity) public payable onlyVerifiedDistributor {
@@ -170,8 +188,9 @@ contract DistributorManagement {
 
         emit ProductPurchased(productId, msg.sender, quantity, totalPrice, trackingId);
 
-        if (msg.value > totalPrice) {
-            payable(msg.sender).transfer(msg.value - totalPrice);
+        uint256 refund = msg.value - totalPrice;
+        if (refund > 0) {
+            payable(msg.sender).transfer(refund);
         }
     }
 
