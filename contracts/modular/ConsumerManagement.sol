@@ -75,9 +75,9 @@ contract ConsumerManagement {
         allConsumers.push(msg.sender);
     }
 
-        function checkRetailerRole(address consumersAddress) public view returns (string memory) {
+        function checkConsumerRole(address consumersAddress) public view returns (string memory) {
         if (consumerRoles[consumersAddress] == UserRoleManager.userRole.Consumers) {
-            return "Retailer";
+            return "Consumer";
         }
         return "No Role";
     }
