@@ -19,7 +19,7 @@
 
 2. ProductManagement: (ABI/ProductManagement.json)
 
-3. DistributorManagement: (ABI/DistributorManagement.json)
+3. [DistributorManagement](https://github.com/AuthChain-Platform/AuthChain_Contract/blob/Jeremiah/modular/ABI/DistributorManagement.json)
 
 4. RetailerManagement: (ABI/RetailerManagement.json)
 
