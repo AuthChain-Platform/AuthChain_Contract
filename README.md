@@ -1,5 +1,4 @@
 
-
 # Contract Addresses
 
 1. UserRoleManager: 0x9b17d06296D01ab7BD42e2e55a517980fFFE9c61
@@ -13,14 +12,14 @@
 5. ConsumerManagement: 0xCCc879D2dF9eaAF6A6103CF67451218016F39a7d
 
 
-# ABIs
+# Contract ABIs
 
-1. UserRoleManager: (ABI/UserRoleManager.json)  
+1. [UserRoleManager](https://github.com/AuthChain-Platform/AuthChain_Contract/blob/Jeremiah/modular/ABI/UserRoleManager.json)  
 
-2. ProductManagement: (ABI/ProductManagement.json)
+2. [ProductManagement](https://github.com/AuthChain-Platform/AuthChain_Contract/blob/Jeremiah/modular/ABI/ProductManagement.json)
 
 3. [DistributorManagement](https://github.com/AuthChain-Platform/AuthChain_Contract/blob/Jeremiah/modular/ABI/DistributorManagement.json)
 
-4. RetailerManagement: (ABI/RetailerManagement.json)
+4. [RetailerManagement](https://github.com/AuthChain-Platform/AuthChain_Contract/blob/Jeremiah/modular/ABI/RetailerManagement.json)
 
 5. [ConsumerManagement](https://github.com/AuthChain-Platform/AuthChain_Contract/blob/Jeremiah/modular/ABI/ConsumerManagement.json)
