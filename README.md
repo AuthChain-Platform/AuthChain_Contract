@@ -23,4 +23,4 @@
 
 4. RetailerManagement: (ABI/RetailerManagement.json)
 
-5. ConsumerManagement: (ABI/ConsumerManagement.json)
+5. [ConsumerManagement](https://github.com/AuthChain-Platform/AuthChain_Contract/blob/Jeremiah/modular/ABI/ConsumerManagement.json)
