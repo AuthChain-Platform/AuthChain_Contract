@@ -4,12 +4,11 @@
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
 
 
-const  AuthChainModule = buildModule("AuthChainModule", (m) => {
+const  UserRoleManagerModule = buildModule("UserRoleManagerModule", (m) => {
 
+  const userRoleManager = m.contract("UserRoleManager");
 
-  const authChain = m.contract("AuthChain");
-
-  return { authChain };
+  return { userRoleManager };
 });
 
-export default AuthChainModule;
+export default UserRoleManagerModule;
