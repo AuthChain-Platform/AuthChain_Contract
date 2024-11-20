@@ -3,22 +3,17 @@ pragma solidity 0.8.27;
 
 contract UserRoleManager {
 
-    address public owner;
-
     enum userRole { 
         Default, 
         Consumers, 
         Manufacturer, 
         LogisticsPersonnel, 
         Retailers, 
+        Distributor,
         Admin 
     }
 
     mapping(address => userRole) public userRoles;
-
-    constructor() {
-        owner = msg.sender;
-    }
 
     event UserRoleAssigned(
         address indexed userAddress,
