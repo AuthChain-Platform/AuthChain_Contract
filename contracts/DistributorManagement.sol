@@ -183,14 +183,14 @@ contract DistributorManagement {
         }
 
 
-        payable(msg.sender).transfer(totalPrice);
+        payable(msg.sender).call{value: totalPrice}("");
 
 
         emit ProductPurchased(productId, msg.sender, quantity, totalPrice, trackingId);
 
         uint256 refund = msg.value - totalPrice;
         if (refund > 0) {
-            payable(msg.sender).transfer(refund);
+            payable(msg.sender).call{value: refund}("");
         }
     }
 
