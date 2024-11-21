@@ -140,7 +140,7 @@ contract RetailerManagement {
         soldProductDetails[productId].totalRevenue += totalPrice;
 
         if (msg.value > totalPrice) {
-            payable(msg.sender).transfer(msg.value - totalPrice);
+            payable(msg.sender).call{value: msg.value - totalPrice}("");
         }
 
         emit ProductPurchased(productId, msg.sender, quantity, totalPrice, block.timestamp);
