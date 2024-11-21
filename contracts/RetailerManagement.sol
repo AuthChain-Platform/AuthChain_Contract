@@ -148,13 +148,13 @@ contract RetailerManagement {
 
 
     function retailerRevenueByAddress(address retailerAddress) public view returns (uint256) {
-        Retailer storage retailer = retailers[retailerAddress];
+        Retailer memory retailer = retailers[retailerAddress];
         return retailer.totalSales;
     }
 
     function retailerRevenue() public view onlyVerifiedRetailer returns (uint256) {
 
-        Retailer storage retailer = retailers[msg.sender];
+        Retailer memory retailer = retailers[msg.sender];
         uint256 totalRevenue = retailer.totalSales;
 
         return totalRevenue;
@@ -162,7 +162,7 @@ contract RetailerManagement {
 
 
     function getProductsOfRetailer() public view returns (uint256[] memory productIds, uint256[] memory quantities) {
-        Retailer storage retailer = retailers[msg.sender];
+        Retailer memory retailer = retailers[msg.sender];
         uint256 totalProducts = retailer.purchasedProducts.length;
 
         productIds = new uint256[](totalProducts);
@@ -186,7 +186,7 @@ contract RetailerManagement {
         uint256 totalSales,
         uint256 totalProducts
     ) {
-        Retailer storage retailer = retailers[retailerAddress];
+        Retailer memory retailer = retailers[retailerAddress];
         return (
             retailer.retailerName,
             retailer.registration_no,
@@ -258,7 +258,7 @@ contract RetailerManagement {
     function viewSoldProducts(address retailerAddress) public view returns (uint256[] memory) {
         require(retailerAddress != address(0), "Invalid retailer address");
 
-        Retailer storage retailer = retailers[retailerAddress];
+        Retailer memory retailer = retailers[retailerAddress];
         require(retailer.verified, "Retailer not verified");
 
         // Use purchasedProducts.length instead of totalSales
