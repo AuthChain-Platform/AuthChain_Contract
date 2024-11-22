@@ -21,6 +21,9 @@ contract UserRoleManager {
     );
 
     function assignRole(address user, userRole role) public {
+
+        require(userRoles[user] == userRole.Default, "User already has a role");
+        
         userRoles[user] = role;
         emit UserRoleAssigned(user, role);
     }
