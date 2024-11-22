@@ -8,12 +8,12 @@ contract DistributorManagement {
 
     uint256 public id;
     address public owner;
-    UserRoleManager public userRoleManager; 
+    UserRoleManager public userRoleManager;
     ProductManagement public productManagement;
 
     struct Distributor {
         uint256 id;
-        address distributorAddress; 
+        address distributorAddress;
         string distributorName;
         string registration_no;
         uint256 yearOfRegistration;
@@ -22,19 +22,23 @@ contract DistributorManagement {
         string image;
         bool verified;
         uint256 totalDistributions;
-        uint256 totalSales;  
+        uint256 totalSales;
         uint256 totalProducts;
     }
 
     Distributor[] public allDistributors;
     mapping(address => UserRoleManager.userRole) public distributorRoles;
+    mapping(address => uint256) public distributorIdMap;
+    mapping(address => uint256[]) public distributorProducts;
+
+    mapping(address => mapping(uint256 => uint256)) public distributorProductQuantities;
 
 
-    event ProductPurchased(uint256 productId, address buyer, uint256 quantity, uint256 totalPrice, uint256 trackingId);
+    event ProductPurchased(uint256 indexed productId, address indexed buyer, uint256 quantity, uint256 indexed newAvailableQuantity, uint256 trackingId);
 
     modifier onlyOwner() {
         require(msg.sender == owner, "Only the owner can perform this action");
-        _; 
+        _;
     }
 
     modifier onlyVerifiedDistributor() {
@@ -49,13 +53,11 @@ contract DistributorManagement {
         _;
     }
 
-
     constructor(address _userRoleManager, address _productManagementAddress) {
         owner = msg.sender;
         userRoleManager = UserRoleManager(_userRoleManager);
         productManagement = ProductManagement(_productManagementAddress);
     }
-
 
     function registerDistributor(
         string memory distributorName,
@@ -65,7 +67,6 @@ contract DistributorManagement {
         string memory state,
         string memory image
     ) public {
-
         for (uint i = 0; i < allDistributors.length; i++) {
             require(allDistributors[i].distributorAddress != msg.sender, "Distributor already registered");
         }
@@ -73,9 +74,7 @@ contract DistributorManagement {
         uint256 newDistributorId = id + 1;
         id = newDistributorId;
 
-
         allDistributors.push(Distributor({
-
             id: newDistributorId,
             distributorAddress: msg.sender,
             distributorName: distributorName,
@@ -88,15 +87,13 @@ contract DistributorManagement {
             totalDistributions: 0,
             totalSales: 0,
             totalProducts: 0
-
         }));
 
         distributorRoles[msg.sender] = UserRoleManager.userRole.Distributor;
-
-
+        distributorIdMap[msg.sender] = newDistributorId;
         userRoleManager.assignRole(msg.sender, UserRoleManager.userRole.Distributor);
     }
-
+    
     function deregisterDistributor(uint256 distributorId) public onlyOwner {
         for (uint i = 0; i < allDistributors.length; i++) {
             if (allDistributors[i].id == distributorId) {
@@ -106,7 +103,6 @@ contract DistributorManagement {
             }
         }
     }
-
 
     function updateDistributorInfo(
         uint256 distributorId,
@@ -148,7 +144,7 @@ contract DistributorManagement {
         }
         return (productIds, quantities);
     }
-
+    
     function checkDistributorRole(address distributorAddress) public view returns (string memory) {
         if (distributorRoles[distributorAddress] == UserRoleManager.userRole.Distributor) {
             return "Distributor";
@@ -157,6 +153,50 @@ contract DistributorManagement {
     }
 
 
+    function orderProductFromDistributor(uint256 productId, uint256 quantity) public {
+        require(quantity > 0, "Quantity must be greater than zero");
+
+        (
+            , 
+            , 
+            , 
+            , 
+            , 
+            uint256 availableQuantity, 
+            , 
+            , 
+            address currentOwner, 
+            uint256 trackingId
+        ) = productManagement.getProductDetails(productId);
+
+        require(availableQuantity >= quantity, "Insufficient stock");
+        require(currentOwner != address(0), "Product not available for sale");
+
+        uint256 newAvailableQuantity = availableQuantity - quantity;
+
+        productManagement.transferProductOwnership(productId, msg.sender);
+
+        Distributor storage distributor = allDistributors[distributorIdMap[msg.sender] - 1];
+        distributor.totalProducts += quantity;
+        distributor.totalDistributions += 1; 
+        distributorProducts[msg.sender].push(productId);
+
+        emit ProductPurchased(productId, msg.sender, quantity, newAvailableQuantity, trackingId);
+    }
+
+
+    function viewDistributorProducts() public view returns (uint256[] memory productIds, uint256[] memory quantities) {
+        require(msg.sender != address(0), "Invalid distributor address");
+
+        uint256[] memory productIds = distributorProducts[msg.sender];
+        uint256[] memory quantities = new uint256[](productIds.length);
+
+        for (uint i = 0; i < productIds.length; i++) {
+            quantities[i] = distributorProductQuantities[msg.sender][productIds[i]]; // Track quantities
+        }
+
+        return (productIds, quantities);
+    }
 
     function buy(uint256 productId, uint256 quantity) public payable onlyVerifiedDistributor {
         require(quantity > 0, "Quantity must be greater than zero");
@@ -226,71 +266,8 @@ contract DistributorManagement {
     }
 
 
-    function getProductInfo(uint256 productCode) public view returns (string memory) {
-        (
-            string memory name,
-            uint256 price,
-            uint256 batchID,
-            uint256 expiryDate,
-            string memory productDescription,
-            uint256 availableQuantity,
-            string memory productImage,
-            ProductManagement.ProductStatus status,
-            address _owner,
-            uint256 trackingID
-        ) = productManagement.getProductDetails(productCode);
-
-        if (status == ProductManagement.ProductStatus.MANUFACTURED) {
-            return string(abi.encodePacked(
-                "Name: ", name, ", ",
-                "Price: ", uint2str(price), ", ",
-                "Batch ID: ", uint2str(batchID), ", ",
-                "Expiry Date: ", uint2str(expiryDate), ", ",
-                "Description: ", productDescription, ", ",
-                "Available Quantity: ", uint2str(availableQuantity), ", ",
-                "Product Image: ", productImage, ", ",
-                "Tracking ID: ", uint2str(trackingID), ", ",
-                "Owner: ", addressToString(_owner)
-            ));
-        } else {
-            return "Product Not Available";
-        }
-    }
-
-        // Helper function to convert uint256 to string
-    function uint2str(uint256 _i) internal pure returns (string memory _uintAsString) {
-        if (_i == 0) {
-            return "0";
-        }
-        uint256 j = _i;
-        uint256 len;
-        while (j != 0) {
-            len++;
-            j /= 10;
-        }
-        bytes memory bstr = new bytes(len);
-        uint256 k = len - 1;
-        while (_i != 0) {
-            bstr[k--] = bytes1(uint8(48 + _i % 10));
-            _i /= 10;
-        }
-        return string(bstr);
-    }
-
-    // Helper function to convert address to string
-    function addressToString(address _addr) internal pure returns (string memory) {
-        return string(abi.encodePacked("0x", toHexString(uint256(uint160(_addr)), 20)));
-    }
-
-    // Helper function for address to hex string conversion
-    function toHexString(uint256 value, uint256 length) internal pure returns (string memory) {
-        bytes16 _HEX_SYMBOLS = "0123456789abcdef";
-        bytes memory buffer = new bytes(2 * length);
-        for (uint256 i = 2 * length; i > 0; i--) {
-            buffer[i - 1] = _HEX_SYMBOLS[value & 0xf];
-            value >>= 4;
-        }
-        return string(buffer);
+    function getDistributorProducts() public view returns (uint256[] memory) {
+        return distributorProducts[msg.sender];
     }
 
 }
