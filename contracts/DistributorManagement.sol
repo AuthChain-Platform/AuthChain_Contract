@@ -152,7 +152,7 @@ contract DistributorManagement {
         uint256[] memory quantities = new uint256[](productIds.length);
 
         for (uint i = 0; i < productIds.length; i++) {
-            quantities[i] = distributorProductQuantities[msg.sender][productIds[i]]; 
+            quantities[i] = distributorProductQuantities[msg.sender][productIds[i]]; // Track quantities
         }
 
         return (productIds, quantities);
