@@ -119,7 +119,6 @@ contract ProductManagement {
     }
 
 
-
     function generateTrackingID(uint256 seed) internal view returns (uint256) {
         return uint256(keccak256(abi.encodePacked(block.timestamp, msg.sender, seed)));
     }
@@ -236,27 +235,27 @@ contract ProductManagement {
         uint256 totalPrice = product.price * numberOfUnits;
         require(msg.value >= totalPrice, "Insufficient funds sent");
 
-        address manufacturer = product.owner;
+        address currentOwner = product.owner;
 
-        manufacturerEarnings[manufacturer] += totalPrice;
+        // Only the current product owner receives the funds
+            payable(currentOwner).transfer(totalPrice);
 
-        payable(manufacturer).transfer(totalPrice);
-
+        // product availability is updated
         product.availableQuantity -= numberOfUnits;
-
         if (product.availableQuantity == 0) {
             isAvailable[productId] = false;
         }
 
+        // Transfer ownership to the buyer (regardless of role)
         product.owner = msg.sender;
         product.trackingID = generateTrackingID(productId);
-
-        logProductAction(productId, "Product Purchased", string(abi.encodePacked("Quantity: ", uint2str(numberOfUnits), " Total Price: ", uint2str(totalPrice))));
+        
+        logProductAction(productId, "Product Purchased", string(abi.encodePacked("Quantity: ", (numberOfUnits), " Total Price: ", (totalPrice))));
 
         emit ProductPurchased(msg.sender, productId, numberOfUnits, totalPrice);
         emit ProductSold(productId, msg.sender, numberOfUnits);
 
-        // Refund excess funds
+        // Refund excess funds if any
         if (msg.value > totalPrice) {
             payable(msg.sender).transfer(msg.value - totalPrice);
         }
@@ -271,7 +270,7 @@ contract ProductManagement {
 
         product.status = newStatus;
 
-        logProductAction(productCode, "Product Status Updated", string(abi.encodePacked("New Status: ", uint2str(uint256(newStatus)))));
+        logProductAction(productCode, "Product Status Updated", string(abi.encodePacked("New Status: ", newStatus)));
         emit ProductStatusUpdated(productCode, newStatus);
     }
 
@@ -286,15 +285,14 @@ contract ProductManagement {
     }
 
 
-
     function getProductQuantity(uint256 productId) public view returns (uint256) {
         return products[productId].availableQuantity;
     }
 
-    function getProductPrice(uint256 productId) public view returns (uint256) {
-        require(isAvailable[productId], "Product not available");
-        return products[productId].price;
-    }
+    // function getProductPrice(uint256 productId) public view returns (uint256) {
+    //     require(isAvailable[productId], "Product not available");
+    //     return products[productId].price;
+    // }
 
     function markProductAsSold(uint256 productId, uint256 numberOfUnits) public {
         require(products[productId].availableQuantity >= numberOfUnits, "Not enough stock to sell");
@@ -307,9 +305,11 @@ contract ProductManagement {
             isAvailable[productId] = false; 
         }
 
-        logProductAction(productId, "Product Sold", string(abi.encodePacked("Quantity: ", uint2str(numberOfUnits))));
+        logProductAction(productId, "Product Sold", string(abi.encodePacked("Quantity: ", (numberOfUnits))));
+
         emit ProductSold(productId, msg.sender, numberOfUnits);
     }
+
 
     function transferProductOwnership(uint256 productCode, address newOwner) public {
         require(isAvailable[productCode], "Product not found");
@@ -320,7 +320,8 @@ contract ProductManagement {
         product.owner = newOwner;
         product.trackingID = generateTrackingID(productCode);
 
-        logProductAction(productCode, "Product Ownership Transferred", string(abi.encodePacked("New Owner: ", toHexString(newOwner))));
+
+        logProductAction(productCode, "Product Ownership Transferred", string(abi.encodePacked("New Owner: ", newOwner)));
         emit ProductTransferred(productCode, newOwner);
     }
 
@@ -386,42 +387,6 @@ contract ProductManagement {
     return userRoleManager.getUserRole(msg.sender);
     }
 
-    // ====================HELPER FUNCTION ==============================
-
-     // Helper function to convert uint to string
-    function uint2str(uint256 _i) internal pure returns (string memory _uintAsString) {
-        if (_i == 0) {
-            return "0";
-        }
-        uint256 j = _i;
-        uint256 len;
-        while (j != 0) {
-            len++;
-            j /= 10;
-        }
-        bytes memory bstr = new bytes(len);
-        uint256 k = len;
-        while (_i != 0) {
-            k = k - 1;
-            uint8 temp = (48 + uint8(_i - _i / 10 * 10));
-            bstr[k] = bytes1(temp);
-            _i /= 10;
-        }
-        return string(bstr);
-    }
-
-    // Helper function to convert address to string
-    function toHexString(address _addr) internal pure returns (string memory) {
-        bytes32 value = bytes32(uint256(uint160(_addr)));
-        bytes memory alphabet = "0123456789abcdef";
-        bytes memory str = new bytes(42);
-        str[0] = "0";
-        str[1] = "x";
-        for (uint256 i = 0; i < 20; i++) {
-            str[2 + i * 2] = alphabet[uint8(value[i + 12] >> 4)];
-            str[3 + i * 2] = alphabet[uint8(value[i + 12] & 0x0f)];
-        }
-        return string(str);
-    }
+    
     
 }
