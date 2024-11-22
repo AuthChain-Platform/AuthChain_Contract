@@ -20,8 +20,19 @@ contract ProductManagement {
         string details;
     }
 
-    ProductHistoryEntry[] public historyLogs;
 
+
+    ProductHistoryEntry[] public historyLogs;
+    
+    struct ItemAction {
+        address actor;
+        string action;
+        uint256 timestamp;
+    }
+
+    mapping(uint256 => ItemAction[]) private itemHistory;
+
+    
     enum ProductStatus {
         MANUFACTURED,         
         IN_TRANSIT_TO_LOGISTICPERSONNEL,  
@@ -51,8 +62,22 @@ contract ProductManagement {
     
     
     Product[] public products; 
+    mapping(uint256 => Product) public productID;
+    
     mapping(uint256 => Product) public productDetails;
     mapping(uint256 => bool) public isAvailable;  
+
+
+    struct ProductItem {
+        uint256 itemID;
+        uint256 productCode;
+        uint256 batchID;
+        address owner;
+        ProductStatus status;
+    }
+
+    mapping(uint256 => ProductItem) public itemDetails;
+    uint256 public nextItemID;
 
     
     struct Manufacturer {
@@ -71,15 +96,17 @@ contract ProductManagement {
     mapping(uint256 => bool) public isVerified; 
     mapping(address => Manufacturer) public manufacturers;
     address[] public manufacturerAddresses;
-    mapping(address => uint256) public manufacturerEarnings;
 
 
     // =========================EVENTS=================================
 
-    event ProductSold(uint256 indexed productCode, address indexed buyer, uint256 indexed quantity);
-    event ProductAdded(uint256 indexed productCode, address indexed owner, uint256 indexed trackingID);
-    event ProductPurchased(address indexed buyer, uint256 indexed productCode, uint256 quantity, uint256 totalPrice);
+    event ProductSold(uint256 indexed productId, address indexed buyer, uint256 quantity);
     event ProductStatusUpdated(uint256 indexed productCode, ProductStatus indexed newStatus);
+    event ProductUpdated(uint256 indexed productCode, address indexed newOwner, uint256 indexed newQuantity);
+    event ProductOrder(uint256 indexed productCode, address indexed buyer, uint256 indexed quantity);
+    event ProductAdded(uint256 indexed productCode, address indexed owner, uint256 indexed trackingID);
+    event OrderReceived(address indexed buyer, uint256 indexed productCode, uint256 quantity, uint256 totalPrice);
+    event OrderReceivedusUpdated(uint256 indexed productCode, ProductStatus indexed newStatus);
     event ProductTransferred(uint256 indexed productCode, address indexed newOwner);
     event ManufacturerRegistered(address indexed manufacturerAddress, string indexed brandName, string indexed nafdac_no, string registration_no, uint256 yearOfRegistration, string location, string state, string image);
     event ManufacturerDeregistered(address indexed manufacturerAddress);
@@ -103,8 +130,6 @@ contract ProductManagement {
 
     function logProductAction(uint256 productId, string memory action, string memory details) internal {
         address actor = msg.sender;
-        UserRoleManager.userRole role = userRoleManager.getUserRole(actor);
-        require(role != UserRoleManager.userRole.Default, "Actor must have a valid role");
 
         ProductHistoryEntry memory newEntry = ProductHistoryEntry({
             actor: actor,
@@ -117,6 +142,11 @@ contract ProductManagement {
         emit ProductActionLogged(productId, actor, action, block.timestamp, details);
 
     }
+
+
+    // function getHistoryOfItem(uint256 itemId) external view returns (ItemAction[] memory) {
+    //     return itemHistory[itemId];
+    // }
 
 
 
@@ -139,14 +169,15 @@ contract ProductManagement {
         string memory _productDescription,
         uint256 _batchQuantity,
         string memory _productImage
+
     ) public {
         
         require(!isAvailable[_productCode], "Product already exists");
+        
         require(
         userRoleManager.getUserRole(msg.sender) == UserRoleManager.userRole.Manufacturer,
         "Only manufacturers can add products");
 
-        // this automatically generates the tracking ID based on product details and sender
         uint256 _trackingID = generateTrackingID(_productCode);
 
         Product memory newProduct = Product({
@@ -164,17 +195,29 @@ contract ProductManagement {
             trackingID: _trackingID
         });
 
-        products.push(newProduct);
+       products.push(newProduct);
         productDetails[_productCode] = newProduct;
         isAvailable[_productCode] = true;
+
+        // Register individual items
+        for (uint256 i = 0; i < _batchQuantity; i++) {
+            nextItemID++;
+            itemDetails[nextItemID] = ProductItem({
+                itemID: nextItemID,
+                productCode: _productCode,
+                batchID: _batchID,
+                owner: msg.sender,
+                status: ProductStatus.MANUFACTURED
+            });
 
         logProductAction(_productCode, "Added", "Product added with initial batch quantity");
 
         emit ProductAdded(_productCode, msg.sender, _trackingID);
 
-    }
+        }
 
-    
+    }
+  
     function getProductDetails(uint256 productCode) public view returns (
         string memory name,
         uint256 price,
@@ -204,6 +247,30 @@ contract ProductManagement {
         );
     }
 
+    function updateProductStock(uint256 productId, uint256 newQuantity) public {
+        
+        require(products[productId].productCode != 0, "Product does not exist");
+
+        products[productId].availableQuantity = newQuantity;
+    }
+
+
+    // returns a single item from a batch
+    function getItemDetails(uint256 itemID) public view returns (
+        uint256 productCode,
+        uint256 batchID,
+        address _owner,
+        ProductStatus status
+
+    ) 
+    {
+        require(itemDetails[itemID].itemID == itemID, "Item not found");
+
+        ProductItem memory item = itemDetails[itemID];
+
+        return (item.productCode, item.batchID, item.owner, item.status);
+    }
+
 
     function getProductLength() public view returns (uint256) {
         return products.length;
@@ -226,21 +293,14 @@ contract ProductManagement {
         return (product.name, product.productImage, product.productDescription, product.owner, product.price);
     }
 
+    function orderProduct(uint256 productId, uint256 numberOfUnits) external {
 
-    function purchaseProduct(uint256 productId, uint256 numberOfUnits) external payable {
         require(isAvailable[productId], "Product not available for sale");
 
         Product storage product = productDetails[productId];
         require(product.availableQuantity >= numberOfUnits, "Not enough stock");
 
         uint256 totalPrice = product.price * numberOfUnits;
-        require(msg.value >= totalPrice, "Insufficient funds sent");
-
-        address manufacturer = product.owner;
-
-        manufacturerEarnings[manufacturer] += totalPrice;
-
-        payable(manufacturer).transfer(totalPrice);
 
         product.availableQuantity -= numberOfUnits;
 
@@ -248,18 +308,19 @@ contract ProductManagement {
             isAvailable[productId] = false;
         }
 
+        for (uint256 i = 1; i <= numberOfUnits; i++) {
+            uint256 itemID = nextItemID - product.availableQuantity - i;
+            itemDetails[itemID].owner = msg.sender;
+            itemDetails[itemID].status = ProductStatus.SOLD_TO_CONSUMER;
+        }
+
         product.owner = msg.sender;
         product.trackingID = generateTrackingID(productId);
 
-        logProductAction(productId, "Product Purchased", string(abi.encodePacked("Quantity: ", uint2str(numberOfUnits), " Total Price: ", uint2str(totalPrice))));
+        logProductAction(productId, "Product Purchased", string(abi.encodePacked("Quantity: ", (numberOfUnits), " Total Price: ", (totalPrice))));
 
-        emit ProductPurchased(msg.sender, productId, numberOfUnits, totalPrice);
-        emit ProductSold(productId, msg.sender, numberOfUnits);
+        emit ProductOrder(productId, msg.sender, numberOfUnits);
 
-        // Refund excess funds
-        if (msg.value > totalPrice) {
-            payable(msg.sender).transfer(msg.value - totalPrice);
-        }
     }
 
 
@@ -267,34 +328,28 @@ contract ProductManagement {
         require(isAvailable[productCode], "Product not found");
 
         Product storage product = productDetails[productCode];
-        require(msg.sender == product.owner, "Only the product owner can update the status");
 
         product.status = newStatus;
 
-        logProductAction(productCode, "Product Status Updated", string(abi.encodePacked("New Status: ", uint2str(uint256(newStatus)))));
+        logProductAction(productCode, "Product Status Updated", string(abi.encodePacked("New Status: ", (uint256(newStatus)))));
         emit ProductStatusUpdated(productCode, newStatus);
     }
 
 
-    function getProductOwner(uint256 productCode) public view returns (address) {
-        Product memory product = getProductByCode(productCode);
-        return product.owner;
-    }
+    // function getProductOwner(uint256 productCode) public view returns (address) {
+    //     Product memory product = getProductByCode(productCode);
+    //     return product.owner;
+    // }
 
     function getAllProducts() public view returns (Product[] memory) {
         return products;
     }
 
 
+    // function getProductQuantity(uint256 productId) public view returns (uint256) {
+    //     return products[productId].availableQuantity;
+    // }
 
-    function getProductQuantity(uint256 productId) public view returns (uint256) {
-        return products[productId].availableQuantity;
-    }
-
-    function getProductPrice(uint256 productId) public view returns (uint256) {
-        require(isAvailable[productId], "Product not available");
-        return products[productId].price;
-    }
 
     function markProductAsSold(uint256 productId, uint256 numberOfUnits) public {
         require(products[productId].availableQuantity >= numberOfUnits, "Not enough stock to sell");
@@ -307,22 +362,36 @@ contract ProductManagement {
             isAvailable[productId] = false; 
         }
 
-        logProductAction(productId, "Product Sold", string(abi.encodePacked("Quantity: ", uint2str(numberOfUnits))));
+        logProductAction(productId, "Product Sold", string(abi.encodePacked("Quantity: ", (numberOfUnits))));
         emit ProductSold(productId, msg.sender, numberOfUnits);
     }
 
-    function transferProductOwnership(uint256 productCode, address newOwner) public {
-        require(isAvailable[productCode], "Product not found");
+    function transferProductOwnership(uint256 productId, address newOwner) public {
+        require(isAvailable[productId], "Product not found");
 
-        Product storage product = productDetails[productCode];
-        require(msg.sender == product.owner, "Only the product owner can transfer ownership");
+        Product storage product = productDetails[productId];
 
         product.owner = newOwner;
-        product.trackingID = generateTrackingID(productCode);
+        product.trackingID = generateTrackingID(productId);
 
-        logProductAction(productCode, "Product Ownership Transferred", string(abi.encodePacked("New Owner: ", toHexString(newOwner))));
-        emit ProductTransferred(productCode, newOwner);
+        logProductAction(productId, "Product Ownership Transferred", string(abi.encodePacked("New Owner: ", (newOwner))));
+        emit ProductTransferred(productId, newOwner);
     }
+
+    // Function to check if a product is expired
+    function checkProductExpiration(uint256 productCode) public view returns (bool isExpired, uint256 expiryDate) {
+        require(isAvailable[productCode], "Product not found");
+
+        Product memory product = productDetails[productCode];
+
+        // Compare the current timestamp with the product's expiry date
+        if (block.timestamp > product.expiryDate) {
+            return (true, product.expiryDate); // Product is expired
+        } else {
+            return (false, product.expiryDate); // Product is not expired
+        }
+    }
+
 
 
     // ==================Manufacturer Functions =================================
@@ -365,63 +434,39 @@ contract ProductManagement {
         );
     }
 
-    function deregisterManufacturer() public {
-        require(manufacturers[msg.sender].verify, "You are not a registered manufacturer");
-
-        delete manufacturers[msg.sender];
-
-        emit ManufacturerDeregistered(msg.sender);
-    }
 
     function getAllManufacturers() public view returns (address[] memory) {
         return manufacturerAddresses;
     }
 
-    function getManufacturerEarnings(address manufacturer) public view returns (uint256) {
-        return manufacturerEarnings[manufacturer];
-    }
-    
 
-    function checkMyRole() public view returns (UserRoleManager.userRole) {
-    return userRoleManager.getUserRole(msg.sender);
-    }
+    function getProductsByManufacturer() public view returns (Product[] memory) {
+        address manufacturer = msg.sender;
+        uint256 count = 0;
 
-    // ====================HELPER FUNCTION ==============================
+        for (uint256 i = 0; i < products.length; i++) {
+            if (products[i].owner == manufacturer) {
+                count++;
+            }
+        }
 
-     // Helper function to convert uint to string
-    function uint2str(uint256 _i) internal pure returns (string memory _uintAsString) {
-        if (_i == 0) {
-            return "0";
+        Product[] memory manufacturerProducts = new Product[](count);
+        uint256 index = 0;
+
+        for (uint256 i = 0; i < products.length; i++) {
+            if (products[i].owner == manufacturer) {
+                manufacturerProducts[index] = products[i];
+                index++;
+            }
         }
-        uint256 j = _i;
-        uint256 len;
-        while (j != 0) {
-            len++;
-            j /= 10;
-        }
-        bytes memory bstr = new bytes(len);
-        uint256 k = len;
-        while (_i != 0) {
-            k = k - 1;
-            uint8 temp = (48 + uint8(_i - _i / 10 * 10));
-            bstr[k] = bytes1(temp);
-            _i /= 10;
-        }
-        return string(bstr);
+
+        return manufacturerProducts;
     }
 
-    // Helper function to convert address to string
-    function toHexString(address _addr) internal pure returns (string memory) {
-        bytes32 value = bytes32(uint256(uint160(_addr)));
-        bytes memory alphabet = "0123456789abcdef";
-        bytes memory str = new bytes(42);
-        str[0] = "0";
-        str[1] = "x";
-        for (uint256 i = 0; i < 20; i++) {
-            str[2 + i * 2] = alphabet[uint8(value[i + 12] >> 4)];
-            str[3 + i * 2] = alphabet[uint8(value[i + 12] & 0x0f)];
-        }
-        return string(str);
-    }
-    
+
+
+    // function checkMyRole() public view returns (UserRoleManager.userRole) {
+    //     return userRoleManager.getUserRole(msg.sender);
+    //     } 
+
 }
