@@ -6,7 +6,7 @@ import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
 
 const  ProductManagementModule = buildModule("ProductManagementModule", (m) => {    
 
-  const userRoleAddress = "0x9b17d06296D01ab7BD42e2e55a517980fFFE9c61";
+  const userRoleAddress = "0x65f34d19a3B47c0177661C32497470543816C40c";
 
   const productManagement = m.contract("ProductManagement", [userRoleAddress]);
 

@@ -1,0 +1,529 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_userRoleManager",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_productManagementAddress",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "productId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "buyer",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "quantity",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "totalPrice",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "trackingId",
+        "type": "uint256"
+      }
+    ],
+    "name": "ProductPurchased",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "allDistributors",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "distributorAddress",
+        "type": "address"
+      },
+      {
+        "internalType": "string",
+        "name": "distributorName",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "registration_no",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "yearOfRegistration",
+        "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "location",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "state",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "image",
+        "type": "string"
+      },
+      {
+        "internalType": "bool",
+        "name": "verified",
+        "type": "bool"
+      },
+      {
+        "internalType": "uint256",
+        "name": "totalDistributions",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "totalSales",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "totalProducts",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "productId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "quantity",
+        "type": "uint256"
+      }
+    ],
+    "name": "buy",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "distributorId",
+        "type": "uint256"
+      }
+    ],
+    "name": "deregisterDistributor",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "productCode",
+        "type": "uint256"
+      }
+    ],
+    "name": "getProductInfo",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "id",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "owner",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "productManagement",
+    "outputs": [
+      {
+        "internalType": "contract ProductManagement",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "distributorName",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "registration_no",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "yearOfRegistration",
+        "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "location",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "state",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "image",
+        "type": "string"
+      }
+    ],
+    "name": "registerDistributor",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "showAllDistributors",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "id",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "distributorAddress",
+            "type": "address"
+          },
+          {
+            "internalType": "string",
+            "name": "distributorName",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "registration_no",
+            "type": "string"
+          },
+          {
+            "internalType": "uint256",
+            "name": "yearOfRegistration",
+            "type": "uint256"
+          },
+          {
+            "internalType": "string",
+            "name": "location",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "state",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "image",
+            "type": "string"
+          },
+          {
+            "internalType": "bool",
+            "name": "verified",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint256",
+            "name": "totalDistributions",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "totalSales",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "totalProducts",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct DistributorManagement.Distributor[]",
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "distributorId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "distributorName",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "registration_no",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "yearOfRegistration",
+        "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "location",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "state",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "image",
+        "type": "string"
+      }
+    ],
+    "name": "updateDistributorInfo",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "userRoleManager",
+    "outputs": [
+      {
+        "internalType": "contract UserRoleManager",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "viewAllRegisteredDistributors",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "id",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "distributorAddress",
+            "type": "address"
+          },
+          {
+            "internalType": "string",
+            "name": "distributorName",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "registration_no",
+            "type": "string"
+          },
+          {
+            "internalType": "uint256",
+            "name": "yearOfRegistration",
+            "type": "uint256"
+          },
+          {
+            "internalType": "string",
+            "name": "location",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "state",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "image",
+            "type": "string"
+          },
+          {
+            "internalType": "bool",
+            "name": "verified",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint256",
+            "name": "totalDistributions",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "totalSales",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "totalProducts",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct DistributorManagement.Distributor[]",
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "distributorId",
+        "type": "uint256"
+      }
+    ],
+    "name": "viewDistributorProducts",
+    "outputs": [
+      {
+        "internalType": "uint256[]",
+        "name": "",
+        "type": "uint256[]"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "",
+        "type": "uint256[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "distributorId",
+        "type": "uint256"
+      }
+    ],
+    "name": "viewDistributorRevenue",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "distributorId",
+        "type": "uint256"
+      }
+    ],
+    "name": "viewPurchasedProductQuantities",
+    "outputs": [
+      {
+        "internalType": "uint256[]",
+        "name": "",
+        "type": "uint256[]"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "",
+        "type": "uint256[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  }
+]
