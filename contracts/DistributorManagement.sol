@@ -93,7 +93,13 @@ contract DistributorManagement {
         distributorIdMap[msg.sender] = newDistributorId;
         userRoleManager.assignRole(msg.sender, UserRoleManager.userRole.Distributor);
     }
-    
+
+    function viewdistributorID() public onlyVerifiedDistributor view returns (uint256){
+        require(msg.sender != address(0), "Invalid distributor address");
+
+        return distributorIdMap[msg.sender];
+    }
+
     function deregisterDistributor(uint256 distributorId) public onlyOwner {
         for (uint i = 0; i < allDistributors.length; i++) {
             if (allDistributors[i].id == distributorId) {
@@ -104,54 +110,13 @@ contract DistributorManagement {
         }
     }
 
-    function updateDistributorInfo(
-        uint256 distributorId,
-        string memory distributorName,
-        string memory registration_no,
-        uint256 yearOfRegistration,
-        string memory location,
-        string memory state,
-        string memory image
-    ) public onlyOwner {
-        for (uint i = 0; i < allDistributors.length; i++) {
-            if (allDistributors[i].id == distributorId) {
-                allDistributors[i].distributorName = distributorName;
-                allDistributors[i].registration_no = registration_no;
-                allDistributors[i].yearOfRegistration = yearOfRegistration;
-                allDistributors[i].location = location;
-                allDistributors[i].state = state;
-                allDistributors[i].image = image;
-                break;
-            }
-        }
-    }
 
-    function viewAllRegisteredDistributors() public view returns (Distributor[] memory) {
-        return allDistributors;
-    }
-
-    function viewPurchasedProductQuantities(uint256 distributorId) public view returns (uint256[] memory, uint256[] memory) {
-        
-        uint256[] memory productIds = new uint256[](allDistributors.length);
-        uint256[] memory quantities = new uint256[](allDistributors.length);
-
-        for (uint i = 0; i < allDistributors.length; i++) {
-            if (allDistributors[i].id == distributorId) {
-                productIds[0] = allDistributors[i].totalProducts;
-                quantities[0] = allDistributors[i].totalDistributions;
-                break;
-            }
-        }
-        return (productIds, quantities);
-    }
-    
     function checkDistributorRole(address distributorAddress) public view returns (string memory) {
         if (distributorRoles[distributorAddress] == UserRoleManager.userRole.Distributor) {
             return "Distributor";
         }
         return "No Role";
     }
-
 
     function orderProductFromDistributor(uint256 productId, uint256 quantity) public {
         require(quantity > 0, "Quantity must be greater than zero");
@@ -198,76 +163,16 @@ contract DistributorManagement {
         return (productIds, quantities);
     }
 
-    function buy(uint256 productId, uint256 quantity) public payable onlyVerifiedDistributor {
-        require(quantity > 0, "Quantity must be greater than zero");
 
-        ( , uint256 price, , , , uint256 availableQuantity, , , ,) = productManagement.getProductDetails(productId);
-
-
-        require(availableQuantity >= quantity, "Insufficient stock");
-
-        uint256 totalPrice = price * quantity;
-        
-        require(msg.value >= totalPrice, "Insufficient funds");
-
-        uint256 trackingId = uint256(keccak256(abi.encodePacked(block.timestamp, msg.sender, productId, quantity)));
-
-        productManagement.purchaseProduct{value: totalPrice}(productId, quantity);
-
-        for (uint i = 0; i < allDistributors.length; i++) {
-            if (allDistributors[i].distributorAddress == msg.sender) {
-                allDistributors[i].totalProducts -= quantity;  
-                allDistributors[i].totalSales += totalPrice; 
-                break;
-            }
-        }
-
-
-        payable(msg.sender).transfer(totalPrice);
-
-
-        emit ProductPurchased(productId, msg.sender, quantity, totalPrice, trackingId);
-
-        uint256 refund = msg.value - totalPrice;
-        if (refund > 0) {
-            payable(msg.sender).transfer(refund);
-        }
-    }
-
-
-    function viewDistributorRevenue(uint256 distributorId) public view returns (uint256) {
-        for (uint i = 0; i < allDistributors.length; i++) {
-            if (allDistributors[i].id == distributorId) {
-                return allDistributors[i].totalSales; 
-            }
-        }
-        revert("Distributor not found");
-    }
-
-
-    function viewDistributorProducts(uint256 distributorId) public view returns (uint256[] memory, uint256[] memory) {
-        uint256[] memory productIds = new uint256[](allDistributors.length);
-        uint256[] memory productQuantities = new uint256[](allDistributors.length);
-        uint256 index = 0;
-
-        for (uint i = 0; i < allDistributors.length; i++) {
-            if (allDistributors[i].id == distributorId) {
-                productIds[index] = distributorId; 
-                productQuantities[index] = allDistributors[i].totalProducts;
-                index++;
-            }
-        }
-
-        return (productIds, productQuantities);
-    }
 
     function showAllDistributors() public view returns (Distributor[] memory) {
         return allDistributors;
     }
 
-
     function getDistributorProducts() public view returns (uint256[] memory) {
         return distributorProducts[msg.sender];
     }
 
+                    
 }
+
