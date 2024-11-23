@@ -6,7 +6,7 @@ import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
 
 const  UserRoleManagerModule = buildModule("UserRoleManagerModule", (m) => {
 
-  const userRoleManager = m.contract("UserRoleManager");
+  const userRoleManager = m.contract("UserRoleManager", []);
 
   return { userRoleManager };
 });
