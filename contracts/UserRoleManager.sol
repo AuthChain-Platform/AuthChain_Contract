@@ -10,7 +10,8 @@ contract UserRoleManager {
         LogisticsPersonnel, 
         Retailers, 
         Distributor,
-        Admin 
+        Admin,
+        Staff
     }
 
     mapping(address => userRole) public userRoles;
