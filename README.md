@@ -90,13 +90,13 @@ Retailers can directly order products from manufacturers using the `orderProduct
 1. UserRoleManager: 0x65f34d19a3B47c0177661C32497470543816C40c
    https://sepolia-blockscout.lisk.com/address/0x65f34d19a3B47c0177661C32497470543816C40c#code
 
-2. ProductManagement: 0x4456ce0eBadB36Ad298Ff19ce4aC18075c4407Cb
+2. ProductManagement: 0x3D8ceA276f85Dd8b373f2Db22Ac3b4A870cF15ae
    https://sepolia-blockscout.lisk.com/address/0x4456ce0eBadB36Ad298Ff19ce4aC18075c4407Cb#code
 
-3. DistributorManagement: 0x7946a63a691555eA75736cDEd41d036C63734881
+3. DistributorManagement: 0x00fCCefe9eD0B3Fb38a8D1B668302ce194e0b58C
    https://sepolia-blockscout.lisk.com/address/0x7946a63a691555eA75736cDEd41d036C63734881#code
 
-4. RetailerManagement: 0x83FeD617C5646F04c13169F58911fa657001FeDE
+4. RetailerManagement: 0x757067EA4CF3b6DB4eB0FC4ea9efb715B515d289
 5. https://sepolia-blockscout.lisk.com/address/0x83FeD617C5646F04c13169F58911fa657001FeDE#code
 
 6. ConsumerManagement: 0xCCc879D2dF9eaAF6A6103CF67451218016F39a7d
